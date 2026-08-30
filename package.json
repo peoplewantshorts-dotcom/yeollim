@@ -36,7 +36,8 @@
     "typecheck": "tsc --noEmit",
     "test:voice": "tsc --ignoreConfig src/domain/voiceMatch.ts src/domain/questions.ts --outDir .engine-build --module commonjs --target es2020 --skipLibCheck --esModuleInterop && node tests/voice.test.js",
     "voice:lines": "node scripts/collect-lines.mjs",
-    "voice:make": "node scripts/make-voice.mjs"
+    "voice:make": "node scripts/make-voice.mjs",
+    "deploy": "expo export --platform web && node scripts/deploy-web.mjs"
   },
   "private": true
 }
