@@ -232,5 +232,16 @@ eq('중앙원룸은 전동휠체어로 갈 수 있다', seedResult.verdict, 'go'
 eq('  재지 않은 항목이 없다', seedResult.unknownMustCount, 0);
 eq('지팡이 사용자에게도 통과', match(cane, seed).verdict, 'go');
 
+/* ------------------------------------------------------------------ */
+group('순위 — 조건이 많이 맞은 집이 앞에 온다');
+
+const [a, b] = SEED_PROPERTIES;
+const ra = match(power, a);
+const rb = match(power, b);
+eq('중앙원룸은 여섯 가지가 다 맞는다', ra.passCount, 6);
+eq('새봄원룸은 두 가지만 맞는다', rb.passCount, 2);
+eq('  그래서 중앙원룸이 앞에 온다', ra.passCount > rb.passCount, true);
+eq('아무것도 안 잰 집은 맞은 것이 없다', match(power, p1).passCount, 0);
+
 console.log(fail === 0 ? '\n모두 통과' : `\n${fail}건 실패`);
 process.exit(fail ? 1 : 0);

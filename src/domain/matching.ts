@@ -43,6 +43,13 @@ export interface MatchResult {
   /** 하단 강조 한 줄 */
   note: string;
   items: ItemResult[];
+  /**
+   * 맞은 조건의 수.
+   *
+   * 순위를 매기는 기준이다. 같은 '갈 수 있어요'라도 맞은 조건이 많은 집이
+   * 먼저 나와야 한다 — 조건이 더 많이 맞을수록 실제로 살기 편한 집이기 때문이다.
+   */
+  passCount: number;
   /** 확인되지 않은 '꼭 필요' 항목 수 */
   unknownMustCount: number;
   checkedAt: string | null;
@@ -254,6 +261,7 @@ export function match(requirements: Requirement[], property: Property): MatchRes
     lines,
     note,
     items,
+    passCount: musts.filter((i) => i.verdict === 'pass').length,
     unknownMustCount: unknownMusts.length,
     checkedAt: property.checkedAt,
   };

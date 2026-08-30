@@ -35,6 +35,30 @@ export const SEED_PROPERTIES: Property[] = [
       parking: true,
     },
   },
+  {
+    id: 'p2',
+    name: '새봄원룸 102호',
+    address: '전북 익산시 신동',
+    checkedAt: '2026-08-30',
+    memo: '9월 중순 입주 가능합니다. 관리비 3만원 별도.',
+    depositMan: 1000,
+    rentMan: 45,
+    media: [],
+    stopMin: 8,
+    storeMin: 5,
+    hospitalMin: 15,
+    facts: {
+      doorWidthCm: 85,
+      outStepCount: 1,
+      outRamp: false,
+      inStepCount: 0,
+      bathroomSillCm: 2,
+      bathroomDoorCm: 76,
+      hasElevator: false,
+      floor: 1,
+      parking: false,
+    },
+  },
 ];
 
 /**

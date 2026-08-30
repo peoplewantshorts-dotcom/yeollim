@@ -28,6 +28,14 @@ import { color, family, font, radius, shadow, space } from '../../src/theme';
 
 const ORDER: Record<Verdict, number> = { go: 0, fix: 1, stop: 3 };
 /** 확인 중인 집은 확정된 집 뒤, '가지 마세요'보다는 앞에 둔다. */
+/**
+ * 순위를 매기는 기준.
+ *
+ * 맞은 조건이 많을수록 앞에 온다. 같은 '갈 수 있어요'라도 여섯 가지가 다 맞은 집과
+ * 네 가지만 맞은 집은 다르기 때문이다. 아직 다 재지 않은 집은 맨 뒤로 보낸다 —
+ * 모르는 것을 잘 맞은 것처럼 앞에 세울 수는 없다.
+ */
+const rankOf = (r: MatchResult) => (r.pending ? -1 : r.passCount);
 const sortKey = (r: MatchResult) => (r.pending ? 2 : ORDER[r.verdict]);
 
 const SKIN: Record<Verdict, { bar: string; bg: string; fg: string }> = {
@@ -56,7 +64,10 @@ export default function MatchesScreen() {
       // 근거 없이 목록에 올리면 사용자는 앱이 이미 다 알아본 줄로 안다.
       .filter((p) => p.checkedAt !== null)
       .map((p) => ({ property: p, result: match(profile.requirements, p) }))
-      .sort((a, b) => sortKey(a.result) - sortKey(b.result));
+      .sort(
+        (a, b) =>
+          rankOf(b.result) - rankOf(a.result) || sortKey(a.result) - sortKey(b.result),
+      );
   }, [profile, properties]);
 
   if (!profile) {
@@ -131,8 +142,14 @@ export default function MatchesScreen() {
         </View>
       ) : null}
 
-      {shown.map(({ property, result }) => (
-        <VerdictCard key={property.id} property={property} result={result} fresh={isNew(property)} />
+      {shown.map(({ property, result }, i) => (
+        <VerdictCard
+          key={property.id}
+          property={property}
+          result={result}
+          fresh={isNew(property)}
+          rank={result.pending ? undefined : i + 1}
+        />
       ))}
     </Screen>
   );
@@ -172,10 +189,13 @@ function VerdictCard({
   property,
   result,
   fresh,
+  rank,
 }: {
   property: Property;
   result: MatchResult;
   fresh?: boolean;
+  /** 조건이 많이 맞은 순서. 아직 다 재지 않은 집에는 붙이지 않는다. */
+  rank?: number;
 }) {
   const skin = result.pending ? PENDING_SKIN : SKIN[result.verdict];
   const shape = result.pending ? PENDING_SHAPE : VERDICT_SHAPE[result.verdict];
@@ -185,6 +205,15 @@ function VerdictCard({
     <NoteSheet edge={skin.bar} style={s.card}>
       <View accessible accessibilityLabel={spoken}>
         {/* 판정은 색 하나에 기대지 않는다. 도형 + 글자 + 색 + 음성 네 겹이다. */}
+        {rank ? (
+          <View style={s.rankRow}>
+            <View style={s.rank}>
+              <Text style={s.rankText}>{rank}순위</Text>
+            </View>
+            <Text style={s.rankWhy}>조건 {result.passCount}가지가 맞아요</Text>
+          </View>
+        ) : null}
+
         <View style={s.verdictRow}>
           {/*
             도형은 색을 못 보는 분에게 판정을 알리는 유일한 단서다.
@@ -244,6 +273,16 @@ const s = StyleSheet.create({
     color: color.goText,
     fontFamily: family.extrabold,
   },
+
+  rankRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
+  rank: {
+    paddingHorizontal: space.md,
+    paddingVertical: 4,
+    borderRadius: radius.chip,
+    backgroundColor: color.primary,
+  },
+  rankText: { fontSize: font.caption + 1, color: color.onPrimary, fontFamily: family.extrabold },
+  rankWhy: { fontSize: font.caption + 1, color: color.paperInkSub, fontFamily: family.semibold },
 
   statusBox: {
     marginTop: space.xl,
