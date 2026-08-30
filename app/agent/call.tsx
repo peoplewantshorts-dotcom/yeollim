@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   Accent,
   AppBar,
@@ -37,6 +38,18 @@ export default function CallAnalysis() {
   const property = properties.find((p) => p.id === id);
 
   const [analyzed, setAnalyzed] = useState(false);
+  /*
+   * 고른 녹음 파일.
+   *
+   * 앱이 통화를 엿듣거나 자동으로 모으지 않는다. 중개사가 이미 갖고 있는 파일을
+   * 직접 골라 주는 것만 쓴다. 무엇을 넘겼는지 본인이 알아야 하기 때문이다.
+   */
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const pickFile = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: false });
+    if (!res.canceled && res.assets[0]) setPicked(res.assets[0].name);
+  };
   const extractions = useMemo(() => analyzeTranscript(SAMPLE_TRANSCRIPT), []);
   const found = extractions.filter((e) => e.value !== null && e.confidence >= CONFIDENCE_FLOOR);
   const pending = extractions.filter((e) => e.value === null || e.confidence < CONFIDENCE_FLOOR);
@@ -63,11 +76,13 @@ export default function CallAnalysis() {
 
         <Card>
           <View style={s.fileRow}>
-            <Text style={s.fileName}>임대인 김○○ 통화</Text>
-            <Text style={s.fileMeta}>14:20 · 3분</Text>
+            <Text style={s.fileName}>{picked ?? '임대인 김○○ 통화'}</Text>
+            <Text style={s.fileMeta}>{picked ? '' : '14:20 · 3분'}</Text>
           </View>
           <Text style={s.fileSub}>{property.name}</Text>
         </Card>
+
+        <GhostButton label="다른 녹음 파일 고르기" onPress={pickFile} />
 
         <View style={s.privacy}>
           <Text style={s.privacyTitle}>보내기 전에 이렇게 처리해요</Text>

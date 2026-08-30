@@ -33,6 +33,9 @@ import { color, family, font, HIT, radius, space, TAP_BIG, TAP_GAP } from '../..
  *
  * 비워 두면 '모름'이다. 모르는 것을 0으로 적게 만들면 그 순간 데이터가 거짓이 된다.
  */
+/** JSX 안에서 줄바꿈을 넣을 때 쓴다. */
+const BR = String.fromCharCode(10);
+
 export default function Checklist() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,9 +47,7 @@ export default function Checklist() {
   const [deposit, setDeposit] = useState<number | null>(property?.depositMan ?? null);
   const [rent, setRent] = useState<number | null>(property?.rentMan ?? null);
   const [media, setMedia] = useState<Media[]>(property?.media ?? []);
-  const [stopMin, setStopMin] = useState<number | null>(property?.stopMin ?? null);
-  const [storeMin, setStoreMin] = useState<number | null>(property?.storeMin ?? null);
-  const [hospitalMin, setHospitalMin] = useState<number | null>(property?.hospitalMin ?? null);
+  const [nearby, setNearby] = useState(property?.nearby ?? '');
 
   /*
    * 말로 넣기.
@@ -81,7 +82,6 @@ export default function Checklist() {
   const set = <K extends keyof PropertyFacts>(key: K, value: PropertyFacts[K]) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
 
-  const filled = Object.values(draft).filter((v) => v !== null).length;
 
   const save = () => {
     updateFacts(property.id, draft);
@@ -90,9 +90,7 @@ export default function Checklist() {
       depositMan: deposit,
       rentMan: rent,
       media,
-      stopMin,
-      storeMin,
-      hospitalMin,
+      nearby,
     });
     router.replace('/agent');
   };
@@ -115,7 +113,7 @@ export default function Checklist() {
       <AppBar title="매물 확인" badge="중개사" />
 
       <H1>{property.name}</H1>
-      <Sub>{filled}개 채우셨어요. 모르시는 칸은 비워두시면 됩니다.</Sub>
+      <Sub>모르시는 칸은 비워두시면 됩니다</Sub>
 
       {/*
         가격.
@@ -133,7 +131,8 @@ export default function Checklist() {
         <Text style={s.section}>계단</Text>
         <Image source={require('../../assets/fig-entry.jpg')} style={s.fig} resizeMode="contain" />
         <Text style={s.figCap}>
-          ① 중앙현관문 앞과 ② 현관 들어가서 1층 집 앞, 두 곳을 따로 봐주세요
+          ① 중앙현관문 앞 · ② 현관 들어가서 1층 집 앞{BR}
+          두 곳을 따로 봐주세요
         </Text>
 
         <Num
@@ -195,7 +194,6 @@ export default function Checklist() {
         />
         <Num
           label="화장실 문 폭"
-          hint="현관을 넘어도 여기서 막히는 집이 많아요"
           unit="cm"
           value={draft.bathroomDoorCm}
           onChange={(v) => set('bathroomDoorCm', v)}
@@ -223,16 +221,27 @@ export default function Checklist() {
       */}
       <Card>
         <Text style={s.section}>
-          걸어서 몇 분 <Text style={s.optional}>선택</Text>
+          걸어서 갈 수 있는 곳 <Text style={s.optional}>선택</Text>
         </Text>
-        <Num label="정류장까지" unit="분" value={stopMin} onChange={setStopMin} ask={setVoice} />
-        <Num label="편의점·마트까지" unit="분" value={storeMin} onChange={setStoreMin} ask={setVoice} />
-        <Num
-          label="병원까지"
-          unit="분"
-          value={hospitalMin}
-          onChange={setHospitalMin}
-          ask={setVoice}
+        <Text style={s.figCap}>무엇이 얼마나 가까운지 그대로 적어 주시면 됩니다</Text>
+        <TextInput
+          value={nearby}
+          onChangeText={setNearby}
+          multiline
+          placeholder="예: 버스정류장 걸어서 4분, 편의점 3분, ○○의원 9분"
+          placeholderTextColor={color.textMuted}
+          style={s.memo}
+          accessibilityLabel="걸어서 갈 수 있는 곳을 적어주세요. 비워두셔도 됩니다."
+        />
+        <Mic
+          label="걸어서 갈 수 있는 곳, 말로 넣기"
+          onPress={() =>
+            setVoice({
+              title: '걸어서 갈 수 있는 곳이 어디인가요?',
+              kind: 'text',
+              apply: (v) => setNearby((t) => (t ? `${t}, ${v as string}` : (v as string))),
+            })
+          }
         />
       </Card>
 
@@ -308,7 +317,7 @@ export default function Checklist() {
         <VoiceAnswer
           visible
           title={voice.title}
-          freeText={voice.kind === 'num'}
+          freeText={voice.kind !== 'bool'}
           choices={
             voice.kind === 'bool'
               ? voiceChoicesFor([
@@ -320,6 +329,10 @@ export default function Checklist() {
           onPick={(said) => {
             if (voice.kind === 'bool') {
               voice.apply(said === 'yes');
+              return;
+            }
+            if (voice.kind === 'text') {
+              voice.apply(said);
               return;
             }
             // 못 알아들으면 채우지 않는다. 틀린 숫자보다 빈 칸이 낫다.
@@ -406,7 +419,22 @@ function SmallButton({ label, onPress }: { label: string; onPress: () => void })
 }
 
 /** 숫자 한 칸. 비우면 '모름'으로 남는다. */
-type VoiceTask = { title: string; kind: 'num' | 'bool'; apply: (v: unknown) => void };
+type VoiceTask = { title: string; kind: 'num' | 'bool' | 'text'; apply: (v: unknown) => void };
+
+/** 줄 끝에 붙는 작은 말하기 단추 */
+function Mic({ label, onPress }: { label: string; onPress: () => void }) {
+  const press = useSteadyPress(onPress);
+  return (
+    <Pressable
+      onPress={press}
+      style={({ pressed }) => [s.mic, pressed && s.micPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={s.micGlyph}>🎙️</Text>
+    </Pressable>
+  );
+}
 
 function Num({
   label,
@@ -455,24 +483,26 @@ function Num({
             accessibilityLabel={`${label}. 숫자로 넣어주세요. 단위는 ${unit}. 모르시면 비워두세요.`}
           />
           <Text style={s.unit}>{unit}</Text>
-        </View>
+          {/* 말하기 버튼을 줄 아래에 따로 두었더니 칸마다 두 줄이 되어 어지러웠다.
+              같은 줄 끝에 작은 단추로 붙인다. */}
+          {ask ? (
+            <Mic
+              label={`${label}, 말로 넣기`}
+              onPress={() =>
+                ask({
+                  title: `${label}은 얼마인가요?`,
+                  kind: 'num',
+                  apply: (v) => {
+                    const n = v as number;
+                    setText(String(n));
+                    onChange(n);
+                  },
+                })
+              }
+            />
+          ) : null}
       </View>
-      {ask ? (
-        <VoiceButton
-          label="말로 넣기"
-          onPress={() =>
-            ask({
-              title: `${label}은 얼마인가요?`,
-              kind: 'num',
-              apply: (v) => {
-                const n = v as number;
-                setText(String(n));
-                onChange(n);
-              },
-            })
-          }
-        />
-      ) : null}
+      </View>
     </View>
   );
 }
@@ -572,8 +602,20 @@ const s = StyleSheet.create({
   },
 
   inputWrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  mic: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surface,
+  },
+  micPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
+  micGlyph: { fontSize: 20 },
   input: {
-    width: 92,
+    width: 84,
     height: TAP_BIG,
     borderRadius: radius.button,
     borderWidth: 2,
@@ -585,7 +627,7 @@ const s = StyleSheet.create({
     fontFamily: family.bold,
     color: color.text,
   },
-  unit: { fontSize: font.label, fontFamily: family.semibold, color: color.textSub, width: 28 },
+  unit: { fontSize: font.caption + 1, fontFamily: family.semibold, color: color.textSub, width: 34 },
 
   mediaRow: { marginTop: space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   thumb: { width: 96, height: 96, borderRadius: radius.button, backgroundColor: color.bg },

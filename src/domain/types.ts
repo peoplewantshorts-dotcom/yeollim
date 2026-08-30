@@ -192,15 +192,17 @@ export interface Property {
    */
   media: Media[];
   /**
-   * 걸어서 몇 분인지. 판정에는 쓰지 않는다.
+   * 걸어서 갈 수 있는 곳. 판정에는 쓰지 않는다.
+   *
+   * 처음에는 정류장·마트·병원까지 몇 분인지 숫자 세 칸으로 받았는데, 실제로
+   * 중개사가 답하는 방식이 아니었다. '○○의원이 걸어서 5분'처럼 무엇이
+   * 있는지와 함께 말한다. 칸을 나누지 않고 그대로 적게 둔다.
    *
    * 지적장애인의 주거 연구에서 지역사회 접근성이 삶의 질 변수로 반복 보고된다
    * (Quesada-Cubo et al. 2025, JARID 73편 체계적 문헌고찰). 다만 몇 분이면
    * 충분한지에 대한 기준값은 근거가 없어 판정선으로 삼지 않고 그대로 전한다.
    */
-  stopMin: number | null;
-  storeMin: number | null;
-  hospitalMin: number | null;
+  nearby: string;
   facts: PropertyFacts;
 }
 

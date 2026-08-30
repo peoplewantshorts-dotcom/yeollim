@@ -20,9 +20,7 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: 500,
     rentMan: 40,
     media: [],
-    stopMin: 4,
-    storeMin: 3,
-    hospitalMin: 9,
+    nearby: '버스정류장 걸어서 4분, 편의점 3분, 익산○○의원 9분',
     facts: {
       doorWidthCm: 92,
       outStepCount: 2,
@@ -44,9 +42,7 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: 1000,
     rentMan: 45,
     media: [],
-    stopMin: 8,
-    storeMin: 5,
-    hospitalMin: 15,
+    nearby: '버스정류장 걸어서 8분, 마트 5분, 병원은 조금 멉니다',
     facts: {
       doorWidthCm: 85,
       outStepCount: 1,

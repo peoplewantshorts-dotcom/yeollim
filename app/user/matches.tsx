@@ -388,6 +388,9 @@ function VerdictCard({
       </Modal>
 
       {/* 숫자로 담기지 않은 것을 중개사가 적어 보냈다면 그대로 전한다. */}
+      {property.nearby ? (
+        <Text style={s.memo}>걸어서 · {property.nearby}</Text>
+      ) : null}
       {property.memo ? <Text style={s.memo}>{property.memo}</Text> : null}
 
       <View style={s.foot}>

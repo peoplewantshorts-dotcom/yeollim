@@ -13,7 +13,7 @@ import {
 import { CONTACT_SENTENCE, MOBILITY_SENTENCE, termLines } from '../../src/domain/questions';
 import type { Property, PropertyFacts } from '../../src/domain/types';
 import { useStore } from '../../src/store';
-import { color, family, font, radius, shadow, space } from '../../src/theme';
+import { color, family, font, keepAll, radius, shadow, space } from '../../src/theme';
 
 /**
  * 받은 의뢰 (중개사 화면).
@@ -76,60 +76,48 @@ export default function AgentInbox() {
     <Screen scrollHint="아래로 내리면 매물 목록이 있어요">
       <AppBar title="받은 의뢰" badge="중개사" />
       <H1>
-        매물 <Accent>{remaining}건</Accent>만 재면 돼요
+        요청서 <Accent>{requests.length}건</Accent>이{BR}
+        들어왔습니다
       </H1>
-      <Sub>줄자로 재신 값을 넣어주시면 됩니다</Sub>
+      {/*
+        중개사에게 일을 시키는 말투가 되면 안 된다. 이 앱을 쓸지 말지는 중개사가
+        정하고, 안 쓰면 앱 자체가 돌아가지 않는다. 무엇을 해 달라고 적는 대신
+        무엇이 남는지를 적는다.
+      */}
+      <Sub>한 번 재어 두면 다음 손님부터는 그대로 씁니다</Sub>
 
-      <View style={s.reqBox}>
-        {/* 이름을 받지 않으므로 보낸 날짜로 구분한다 */}
-        <Text style={s.reqName}>{sentOn(latest.sentAt)}에 온 요청서</Text>
-        <Text style={s.reqBody}>{MOBILITY_SENTENCE[latest.mobility]}</Text>
+      <View style={s.card}>
+        <Text style={s.cardDate}>{sentOn(latest.sentAt)}에 왔습니다</Text>
+        <Text style={s.cardWho}>{MOBILITY_SENTENCE[latest.mobility]}</Text>
+
+        {/*
+          연락 방식은 집 조건이 아니라 '어떻게 답해야 하는가'다.
+          전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다.
+          그래서 조건 목록보다 앞에, 눈에 띄게 올린다.
+        */}
+        {latest.contact === 'text' ? (
+          <View style={s.callout}>
+            <Text style={s.calloutHead}>전화 말고 문자로 연락 주세요</Text>
+            <Text style={s.calloutBody}>이 분은 전화로 이야기하기 어려우세요</Text>
+          </View>
+        ) : (
+          <Text style={s.plain}>{CONTACT_SENTENCE[latest.contact]}</Text>
+        )}
+
+        <Text style={s.sectionHead}>꼭 필요한 것</Text>
         {musts.map((r) => (
-          <Text key={r.key} style={s.reqItem}>
-            · {r.cardText}
-          </Text>
+          <Row key={r.key} text={r.cardText} />
         ))}
+
         {terms.length > 0 ? (
           <>
-            <Text style={s.reqSub}>이런 집이면 좋겠대요</Text>
+            <Text style={s.sectionHead}>이런 집이면 좋겠대요</Text>
             {terms.map((t) => (
-              <Text key={t} style={s.reqItem}>
-                · {t}
-              </Text>
+              <Row key={t} text={t} mark="·" />
             ))}
           </>
         ) : null}
       </View>
-
-      {/*
-        연락 방식은 집 조건이 아니라 '어떻게 답해야 하는가'다.
-        전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다.
-        그래서 조건 목록 안에 섞지 않고 따로, 눈에 띄게 올린다.
-      */}
-      {latest.contact === 'text' ? (
-        <View style={s.contactBox}>
-          <Text style={s.contactHead}>전화 말고 문자로 연락 주세요</Text>
-          <Text style={s.contactBody}>
-            이 분은 전화로 이야기하기 어려우세요.{'\n'}
-            재신 내용을 앱이나 문자로 보내주시면 됩니다.
-          </Text>
-        </View>
-      ) : (
-        <Text style={s.contactPlain}>{CONTACT_SENTENCE[latest.contact]}</Text>
-      )}
-
-      {latest.visitIds?.length ? (
-        <View style={s.visitBox}>
-          <Text style={s.visitHead}>이 집들을 보고 싶어 하세요</Text>
-          {properties
-            .filter((p) => latest.visitIds.includes(p.id))
-            .map((p) => (
-              <Text key={p.id} style={s.visitItem}>
-                · {p.name}
-              </Text>
-            ))}
-        </View>
-      ) : null}
 
       <Text style={s.listHead}>매물 {properties.length}건</Text>
       {properties.map((p) => (
@@ -138,6 +126,16 @@ export default function AgentInbox() {
 
       <AddButton />
     </Screen>
+  );
+}
+
+/** 요청서 안의 한 줄 */
+function Row({ text, mark = '✓' }: { text: string; mark?: string }) {
+  return (
+    <View style={s.row} accessible accessibilityLabel={text}>
+      <Text style={s.rowMark}>{mark}</Text>
+      <Text style={s.rowText}>{text}</Text>
+    </View>
   );
 }
 
@@ -162,17 +160,17 @@ function PropertyRow({ property }: { property: Property }) {
   return (
     <Pressable
       onPress={open}
-      style={({ pressed }) => [s.row, pressed && s.rowPressed]}
+      style={({ pressed }) => [s.listRow, pressed && s.listRowPressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${property.name}, ${SLOTS}가지 중 ${done}가지 확인됨`}
+      accessibilityLabel={`${property.name}, ${SLOTS}가지 중 ${done}가지 재어 둠`}
     >
-      <View style={s.rowBody}>
-        <Text style={s.rowName}>{property.name}</Text>
-        <Text style={s.rowAddr}>{property.address || '주소 없음'}</Text>
+      <View style={s.listRowBody}>
+        <Text style={s.listRowName}>{property.name}</Text>
+        <Text style={s.listRowAddr}>{property.address || '주소 없음'}</Text>
       </View>
       <View style={[s.pill, complete ? s.pillDone : s.pillTodo]}>
         <Text style={[s.pillText, complete ? s.pillTextDone : s.pillTextTodo]}>
-          {complete ? '확인 완료' : `${done}/${SLOTS}`}
+          {complete ? '다 재어 뒀어요' : `${done}/${SLOTS}`}
         </Text>
       </View>
       <Text style={s.chev}>›</Text>
@@ -181,60 +179,71 @@ function PropertyRow({ property }: { property: Property }) {
 }
 
 const s = StyleSheet.create({
-  reqBox: {
+  /*
+   * 요청서.
+   *
+   * 보라로 가득 채운 상자에 작은 글씨를 넣었더니 덩어리로만 보이고 무엇이
+   * 적혀 있는지 눈에 안 들어왔다. 흰 카드에 크기로 위계를 준다.
+   */
+  card: {
     marginTop: space.xl,
-    backgroundColor: color.primarySoft,
+    backgroundColor: color.surface,
     borderRadius: radius.card,
     padding: space.xl,
+    ...shadow.card,
   },
-  reqName: { fontSize: font.label, fontFamily: family.extrabold, color: color.onPrimarySoft },
-  reqBody: {
-    marginTop: space.sm,
-    fontSize: font.caption + 1,
-    lineHeight: (font.caption + 1) * 1.5,
-    color: color.onPrimarySoft,
-    fontFamily: family.semibold,
-  },
-  reqSub: {
-    marginTop: space.md,
-    fontSize: font.caption + 1,
-    fontFamily: family.bold,
-    color: color.onPrimarySoft,
-  },
-  reqItem: {
+  cardDate: { fontSize: font.caption + 1, color: color.textMuted, fontFamily: family.semibold },
+  cardWho: {
     marginTop: space.xs,
-    fontSize: font.caption + 1,
-    lineHeight: (font.caption + 1) * 1.5,
-    color: color.onPrimarySoft,
-    fontFamily: family.regular,
+    fontSize: font.h2 + 2,
+    lineHeight: (font.h2 + 2) * 1.35,
+    fontFamily: family.extrabold,
+    color: color.text,
+    ...keepAll,
   },
 
-  // 요청서 상자와 구분은 되어야 하지만 앱 밖에서 온 것처럼 보이면 안 된다.
-  // 색을 바꾸는 대신 테두리를 둘러 구분한다.
-  contactBox: {
+  callout: {
     marginTop: space.lg,
-    backgroundColor: color.surface,
+    borderRadius: radius.button,
     borderWidth: 2,
     borderColor: color.primary,
-    borderRadius: radius.card,
-    padding: space.xl,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
-  contactHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.primaryText },
-  contactBody: {
-    marginTop: space.sm,
+  calloutHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.primaryText },
+  calloutBody: {
+    marginTop: 2,
     fontSize: font.caption + 1,
-    lineHeight: (font.caption + 1) * 1.5,
+    color: color.textSub,
+    fontFamily: family.regular,
+    ...keepAll,
+  },
+  plain: {
+    marginTop: space.lg,
+    fontSize: font.label,
     color: color.textSub,
     fontFamily: family.regular,
   },
-  contactPlain: {
-    marginTop: space.lg,
-    fontSize: font.caption + 1,
-    color: color.textMuted,
-    fontFamily: family.regular,
+
+  sectionHead: {
+    marginTop: space.xl,
+    marginBottom: space.sm,
+    fontSize: font.label,
+    fontFamily: family.extrabold,
+    color: color.primaryText,
+  },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginTop: space.xs },
+  rowMark: { width: 18, fontSize: font.label, lineHeight: font.label * 1.5, color: color.primaryText },
+  rowText: {
+    flex: 1,
+    fontSize: font.label,
+    lineHeight: font.label * 1.5,
+    color: color.text,
+    fontFamily: family.semibold,
+    ...keepAll,
   },
 
-  visitBox: {
+  visitCard: {
     marginTop: space.lg,
     backgroundColor: color.goBg,
     borderRadius: radius.card,
@@ -242,11 +251,11 @@ const s = StyleSheet.create({
   },
   visitHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.goText },
   visitItem: {
-    marginTop: space.xs,
-    fontSize: font.label,
-    lineHeight: font.label * 1.5,
+    marginTop: space.sm,
+    fontSize: font.body,
+    lineHeight: font.body * 1.5,
     color: color.goText,
-    fontFamily: family.regular,
+    fontFamily: family.bold,
   },
 
   listHead: {
@@ -256,7 +265,7 @@ const s = StyleSheet.create({
     color: color.textMuted,
   },
 
-  row: {
+  listRow: {
     minHeight: 78,
     flexDirection: 'row',
     alignItems: 'center',
@@ -268,10 +277,10 @@ const s = StyleSheet.create({
     marginTop: space.md,
     ...shadow.card,
   },
-  rowPressed: { backgroundColor: color.surfaceSoft },
-  rowBody: { flex: 1 },
-  rowName: { fontSize: font.body, fontFamily: family.extrabold, color: color.text },
-  rowAddr: {
+  listRowPressed: { backgroundColor: color.surfaceSoft },
+  listRowBody: { flex: 1 },
+  listRowName: { fontSize: font.body, fontFamily: family.extrabold, color: color.text },
+  listRowAddr: {
     marginTop: 2,
     fontSize: font.caption,
     color: color.textMuted,
