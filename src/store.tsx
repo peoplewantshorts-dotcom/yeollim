@@ -12,6 +12,7 @@ const SEED_MEDIA: Record<string, Media[]> = {
   p1: [
     { uri: '', kind: 'image', asset: require('../assets/p1-ramp.jpg') },
     { uri: '', kind: 'image', asset: require('../assets/p1-door.jpg') },
+    { uri: '', kind: 'image', asset: require('../assets/p1-sill.jpg') },
   ],
   p2: [
     { uri: '', kind: 'image', asset: require('../assets/p2-entry.jpg') },
@@ -30,7 +31,7 @@ import type { Media, Property, PropertyFacts, RequestCard, UserProfile } from '.
 
 // 프로필과 매물 데이터 구조가 바뀌었다. 예전에 저장된 값을 그대로 읽으면
 // 없는 항목을 참조하다 판정이 어긋나므로 저장 키를 올려 새로 시작한다.
-const KEY = 'yeollim.state.v9';
+const KEY = 'yeollim.state.v10';
 
 export type Role = 'user' | 'agent';
 
