@@ -105,7 +105,8 @@ const req = (
   key: Requirement['key'],
   threshold: number | null,
   cardText: string,
-): Requirement => ({ key, threshold, priority: 'must', cardText });
+  emphasis: string,
+): Requirement => ({ key, threshold, priority: 'must', cardText, emphasis });
 
 /**
  * 이동 방법에서 집이 갖춰야 할 조건을 도출한다.
@@ -123,19 +124,19 @@ const req = (
 export function deriveRequirements(mobility: MobilityId): Requirement[] {
   if (WHEELED.includes(mobility)) {
     return [
-      req('doorWidth', 90, '현관문 폭 90cm 이상'),
-      req('outStep', 0, '중앙현관 앞에 계단 없음'),
-      req('inStep', 0, '중앙현관 안에 계단 없음'),
-      req('bathroomSill', 0, '화장실 문턱 없음'),
-      req('bathroomDoor', 80, '화장실 문 폭 80cm 이상'),
-      req('elevator', null, '2층 이상이면 승강기'),
+      req('doorWidth', 90, '현관문 폭 90cm 이상', '90cm 이상'),
+      req('outStep', 0, '중앙현관 앞에 계단 없음', '계단 없음'),
+      req('inStep', 0, '중앙현관 안에 계단 없음', '계단 없음'),
+      req('bathroomSill', 0, '화장실 문턱 없음', '문턱 없음'),
+      req('bathroomDoor', 80, '화장실 문 폭 80cm 이상', '80cm 이상'),
+      req('elevator', null, '2층 이상이면 승강기', '승강기'),
     ];
   }
   if (WALKING_AID.includes(mobility)) {
     return [
-      req('outStep', 3, '중앙현관 앞 계단 3칸까지'),
-      req('inStep', 3, '중앙현관 안 계단 3칸까지'),
-      req('bathroomSill', 2.5, '화장실 문턱 2.5cm 이하'),
+      req('outStep', 3, '중앙현관 앞 계단 3칸까지', '3칸까지'),
+      req('inStep', 3, '중앙현관 안 계단 3칸까지', '3칸까지'),
+      req('bathroomSill', 2.5, '화장실 문턱 2.5cm 이하', '2.5cm 이하'),
     ];
   }
   return [];

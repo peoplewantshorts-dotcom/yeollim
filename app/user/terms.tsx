@@ -351,7 +351,14 @@ const s = StyleSheet.create({
     color: color.text,
   },
 
-  actions: { marginTop: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.lg },
+  // 버튼 두 개가 한 줄에 안 들어가면 아래로 내려간다. 카드 밖으로 밀려 나가면 안 된다.
+  actions: {
+    marginTop: space.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    flexWrap: 'wrap',
+  },
 
   suggest: { marginTop: space.md, flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
 

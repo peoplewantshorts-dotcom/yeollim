@@ -762,24 +762,32 @@ export function NoteLine({
   mark = '✓',
   strong,
   /**
-   * 형광펜.
+   * 형광펜을 칠할 대목.
    *
-   * 종이에서 중요한 줄을 표시하는 가장 익숙한 방법이다. 색으로만 나누지 않도록
-   * 앞의 체크 표시와 함께 쓴다 — 색을 못 보셔도 체크는 보인다.
+   * 줄 전체를 칠하면 어디가 핵심인지 알 수 없다. 이 줄에서 실제로 읽어야 하는
+   * 것은 수치다 — '현관문 폭'이 아니라 '90cm 이상'이 내용이다.
+   * 색으로만 나누지 않도록 앞의 체크 표시와 함께 쓴다.
    */
-  highlight,
+  emphasis,
 }: {
   text: string;
   mark?: string;
   strong?: boolean;
-  highlight?: boolean;
+  emphasis?: string;
 }) {
+  const at = emphasis ? text.indexOf(emphasis) : -1;
+  const head = at >= 0 ? text.slice(0, at) : text;
+  const tail = at >= 0 ? text.slice(at + (emphasis as string).length) : '';
+
   return (
     <View style={n.line} accessible accessibilityLabel={text}>
       <Text style={[noteText, n.mark]}>{mark}</Text>
-      <View style={highlight ? n.hi : undefined}>
-        <Text style={[noteText, (strong || highlight) && n.strong]}>{text}</Text>
-      </View>
+      {/* flex 를 주지 않으면 긴 줄이 카드 밖으로 밀려 나간다 */}
+      <Text style={[noteText, n.lineBody, strong && n.strong]}>
+        {head}
+        {at >= 0 ? <Text style={n.hi}>{emphasis}</Text> : null}
+        {tail}
+      </Text>
     </View>
   );
 }
@@ -809,8 +817,19 @@ const n = StyleSheet.create({
   },
 
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
-  mark: { width: 18, color: color.primaryText },
-  // 아주 연한 노랑. 형광펜으로 그은 자리처럼만 보이게 한다.
-  hi: { backgroundColor: '#FBF3D9', borderRadius: 4, paddingHorizontal: space.sm },
+  mark: { width: 20, color: color.primaryText },
+  lineBody: { flex: 1 },
+  /*
+   * 형광펜.
+   *
+   * 줄 높이만큼 칠하면 띠가 두꺼워 형광펜이 아니라 색칠한 칸으로 보인다.
+   * 행간을 줄여 글자보다 조금 낮게 그어지도록 했다.
+   */
+  hi: {
+    backgroundColor: color.marker,
+    lineHeight: RULE - 14,
+    fontFamily: family.bold,
+    color: color.paperInk,
+  },
   strong: { fontFamily: family.bold },
 });

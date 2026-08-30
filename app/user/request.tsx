@@ -92,12 +92,12 @@ export default function RequestScreen() {
 
         {/* 전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다. 밑줄로 세워 둔다. */}
         {profile.contact === 'text' ? (
-          <NoteLine text="전화가 어려워요. 문자로 연락 주세요" highlight />
+          <NoteLine text="전화가 어려워요. 문자로 연락 주세요" emphasis="문자로 연락 주세요" />
         ) : null}
 
         <Text style={[noteText, s.section]}>꼭 필요해요</Text>
         {musts.length > 0 ? (
-          musts.map((r) => <NoteLine key={r.key} text={r.cardText} highlight />)
+          musts.map((r) => <NoteLine key={r.key} text={r.cardText} emphasis={r.emphasis} />)
         ) : (
           <Text style={noteText}>집 구조에서 꼭 필요한 조건은 없으세요</Text>
         )}

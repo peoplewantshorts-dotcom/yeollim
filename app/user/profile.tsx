@@ -184,7 +184,7 @@ const s = StyleSheet.create({
     marginTop: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.lg,
+    gap: space.md,
     flexWrap: 'wrap',
   },
   qTitle: {

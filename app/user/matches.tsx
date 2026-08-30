@@ -193,40 +193,27 @@ function VerdictCard({
   /** 조건이 많이 맞은 순서. 아직 다 재지 않은 집에는 붙이지 않는다. */
   rank?: number;
 }) {
-  const skin = result.pending ? PENDING_SKIN : SKIN[result.verdict];
-  const shape = result.pending ? PENDING_SHAPE : VERDICT_SHAPE[result.verdict];
   const spoken = speakableResult(property.name, result);
   const photos = property.media.filter((m) => m.kind === 'image');
+  const musts = result.items.filter((i) => i.isMust);
 
   return (
     <View style={s.card}>
       <View accessible accessibilityLabel={spoken}>
-        <View style={s.head}>
-          {rank ? (
-            <View style={s.rank}>
-              <Text style={s.rankText}>{rank}순위</Text>
-            </View>
-          ) : null}
-          {/*
-            판정은 색 하나에 기대지 않는다. 도형 + 글자 + 색 + 음성 네 겹이다.
-            도형은 색을 못 보는 분에게 판정을 알리는 유일한 단서라
-            막대용 색이 아니라 글자와 같은 색(fg)으로 그린다.
-          */}
-          <View style={[s.verdict, { backgroundColor: skin.bg }]}>
-            <Text style={[s.mark, { color: skin.fg }]}>{shape}</Text>
-            <Text style={[s.verdictText, { color: skin.fg }]}>{result.title}</Text>
+        {rank ? (
+          <View style={s.rank}>
+            <Text style={s.rankText}>{rank}순위</Text>
           </View>
-        </View>
+        ) : null}
 
         <Text style={s.name}>{property.name}</Text>
-        {rank ? <Text style={s.why}>조건 {result.passCount}가지가 맞아요</Text> : null}
         {fresh ? <Text style={s.freshTag}>새로 올라왔어요</Text> : null}
       </View>
 
       {/*
         중개사가 보낸 사진.
-        숫자로는 담기지 않는 것을 눈으로 확인하는 자리다. 판정 바로 아래에 두어
-        먼저 판정을 읽고 사진으로 확인하는 순서가 되게 한다.
+        숫자로는 담기지 않는 것 — 경사로의 실제 기울기, 줄자에 찍힌 문 폭 —
+        이 여기서 전해진다. 조건 목록보다 앞에 두어 먼저 눈으로 보게 한다.
       */}
       {photos.length > 0 ? (
         <ScrollView
@@ -247,14 +234,28 @@ function VerdictCard({
         </ScrollView>
       ) : null}
 
-      {result.lines.map((l, i) => (
-        <Text key={i} style={s.line}>
-          {l}
-        </Text>
-      ))}
-
-      <View style={[s.noteBox, { backgroundColor: skin.bg }]}>
-        <Text style={[s.noteText, { color: skin.fg }]}>{result.note}</Text>
+      {/*
+        조건을 아래에 정리해서 보여준다.
+        '갈 수 있어요' 같은 말은 빼도 된다 — 여기 보이는 집은 어차피 갈 수 있는
+        집이고, 정작 알아야 하는 것은 무엇이 맞았고 무엇을 고치면 되는가다.
+      */}
+      <View style={s.conds}>
+        {musts.map((it) => (
+          <View key={it.key} style={s.cond}>
+            <Text style={[s.condMark, it.verdict === 'pass' ? s.markOk : s.markFix]}>
+              {it.verdict === 'pass' ? '✓' : it.verdict === 'fixable' ? '△' : '○'}
+            </Text>
+            <View style={s.condBody}>
+              <CondText text={it.label} emphasis={it.emphasis} on={it.verdict === 'pass'} />
+              {it.verdict !== 'pass' ? (
+                <Text style={s.condWhy}>
+                  {it.reason}
+                  {it.remedy ? ` — ${it.remedy}` : ''}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ))}
       </View>
 
       {/* 숫자로 담기지 않은 것을 중개사가 적어 보냈다면 그대로 전한다. */}
@@ -270,6 +271,19 @@ function VerdictCard({
   );
 }
 
+/** 맞은 조건은 핵심 대목에만 형광을 칠한다. 줄 전체를 칠하면 어디가 핵심인지 모른다. */
+function CondText({ text, emphasis, on }: { text: string; emphasis: string; on: boolean }) {
+  const at = emphasis ? text.indexOf(emphasis) : -1;
+  if (!on || at < 0) return <Text style={s.condText}>{text}</Text>;
+  return (
+    <Text style={s.condText}>
+      {text.slice(0, at)}
+      <Text style={s.condHi}>{emphasis}</Text>
+      {text.slice(at + emphasis.length)}
+    </Text>
+  );
+}
+
 const s = StyleSheet.create({
   card: {
     marginTop: space.lg,
@@ -281,8 +295,8 @@ const s = StyleSheet.create({
     ...shadow.card,
   },
 
-  head: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexWrap: 'wrap' },
   rank: {
+    alignSelf: 'flex-start',
     paddingHorizontal: space.md,
     paddingVertical: 5,
     borderRadius: radius.chip,
@@ -290,17 +304,33 @@ const s = StyleSheet.create({
   },
   rankText: { fontSize: font.caption + 1, color: color.onPrimary, fontFamily: family.extrabold },
 
-  verdict: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 5,
-    borderRadius: radius.chip,
+  conds: { marginTop: space.xl, gap: space.md },
+  cond: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+  // 도형 자체가 표식이다. 색을 못 보거나 흑백으로 뽑아도 ✓ △ ○ 로 구분된다.
+  condMark: { width: 20, fontSize: font.label, lineHeight: font.label * 1.5 },
+  markOk: { color: color.goText },
+  markFix: { color: color.fixText },
+  condBody: { flex: 1 },
+  condText: {
+    fontSize: font.label,
+    lineHeight: font.label * 1.5,
+    color: color.text,
+    fontFamily: family.semibold,
+    ...keepAll,
   },
-  // 도형 자체가 표식이다. 색을 못 보거나 흑백으로 뽑아도 ● ▲ ■ ○ 로 구분된다.
-  mark: { fontSize: 13, fontFamily: family.regular },
-  verdictText: { fontSize: font.caption + 1, fontFamily: family.extrabold },
+  condHi: {
+    backgroundColor: color.marker,
+    lineHeight: font.label * 1.2,
+    fontFamily: family.bold,
+  },
+  condWhy: {
+    marginTop: 2,
+    fontSize: font.caption + 1,
+    lineHeight: (font.caption + 1) * 1.5,
+    color: color.fixText,
+    fontFamily: family.regular,
+    ...keepAll,
+  },
 
   name: {
     marginTop: space.lg,
@@ -310,12 +340,6 @@ const s = StyleSheet.create({
     color: color.text,
     letterSpacing: -0.6,
     ...keepAll,
-  },
-  why: {
-    marginTop: space.xs,
-    fontSize: font.label,
-    color: color.textMuted,
-    fontFamily: family.semibold,
   },
   freshTag: {
     marginTop: space.xs,
@@ -328,27 +352,7 @@ const s = StyleSheet.create({
   photoRowInner: { paddingHorizontal: space.xl, gap: space.md },
   photo: { width: 260, height: 176, borderRadius: radius.button, backgroundColor: color.bg },
 
-  line: {
-    marginTop: space.sm,
-    fontSize: font.label,
-    lineHeight: font.label * 1.55,
-    color: color.textSub,
-    fontFamily: family.regular,
-    ...keepAll,
-  },
 
-  noteBox: {
-    marginTop: space.lg,
-    borderRadius: radius.button,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-  },
-  noteText: {
-    fontSize: font.label,
-    lineHeight: font.label * 1.45,
-    fontFamily: family.bold,
-    ...keepAll,
-  },
 
   memo: {
     marginTop: space.lg,

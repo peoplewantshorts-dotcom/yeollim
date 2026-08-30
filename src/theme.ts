@@ -56,6 +56,8 @@ export const color = {
   paperMargin: '#CFC5F0',
   paperInk: '#1B1B2F',
   paperInkSub: '#5C5C75',
+  /** 형광펜. 종이 위에서 중요한 대목만 칠한다. */
+  marker: '#FFF2A8',
 
   // 판정 3단계 — 각 단계는 색 외에 label/shape/tts로 중복 전달된다
   goBar: '#3E8E5A',

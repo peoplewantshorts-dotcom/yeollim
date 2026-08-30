@@ -39,6 +39,14 @@ export interface Requirement {
   priority: Priority;
   /** 요청서에 그대로 인쇄되는 쉬운 말 */
   cardText: string;
+  /**
+   * 그 문장에서 형광펜을 칠할 부분.
+   *
+   * 줄 전체를 칠하면 어디가 핵심인지 알 수 없다. 실제로 중요한 것은 수치다 —
+   * '현관문 폭'이 아니라 '90cm 이상'이 이 줄의 내용이다.
+   * 규칙으로 잘라내려 하면 문장을 고칠 때마다 어긋나므로 여기 적어 둔다.
+   */
+  emphasis: string;
 }
 
 /**

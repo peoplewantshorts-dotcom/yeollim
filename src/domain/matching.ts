@@ -18,6 +18,8 @@ export interface ItemResult {
   key: FactKey;
   /** 요청서에 인쇄된 문장 그대로 */
   label: string;
+  /** 그 문장에서 형광펜을 칠할 부분 */
+  emphasis: string;
   verdict: ItemVerdict;
   /** 사용자에게 보여줄 쉬운 말 근거 */
   reason: string;
@@ -76,7 +78,7 @@ export const PENDING_SHAPE = '○';
 /** 항목 하나를 판정한다. */
 function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
   const isMust = req.priority === 'must';
-  const base = { key: req.key, label: req.cardText, isMust };
+  const base = { key: req.key, label: req.cardText, emphasis: req.emphasis, isMust };
   const unknown = (what: string): ItemResult => ({
     ...base,
     verdict: 'unknown',
