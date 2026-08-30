@@ -103,7 +103,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: `현관문 폭이 ${cm}cm예요`,
-          remedy: '문턱을 없애거나 문짝을 바꾸면 넓어져요',
+          remedy: '문턱만 없애도 지나가기 수월해져요',
         };
       }
       return { ...base, verdict: 'fail', reason: `현관문 폭이 ${cm}cm라 좁아요` };
@@ -189,7 +189,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: `화장실 문 폭이 ${cm}cm예요`,
-          remedy: '문짝을 미닫이로 바꾸면 넓어져요',
+          remedy: '문짝을 접이문으로 바꾸면 지나갈 수 있어요',
         };
       }
       return { ...base, verdict: 'fail', reason: `화장실 문 폭이 ${cm}cm라 좁아요` };

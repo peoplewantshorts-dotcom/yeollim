@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -19,6 +19,7 @@ import {
   type Verdict,
 } from '../../src/domain/matching';
 import type { Property } from '../../src/domain/types';
+import { ScrollHint } from '../../src/components/ScrollHint';
 import { useStore } from '../../src/store';
 import { color, family, font, keepAll, radius, shadow, space } from '../../src/theme';
 
@@ -116,7 +117,7 @@ export default function MatchesScreen() {
       )}
       <Sub>
         {confirmed > 0
-          ? '가기 전에 미리 확인한 내용이에요'
+          ? '미리 확인한 내용이에요'
           : '확인이 끝나는 대로 여기에 올려드릴게요'}
       </Sub>
 
@@ -197,6 +198,14 @@ function VerdictCard({
   const photos = property.media.filter((m) => m.kind === 'image');
   const musts = result.items.filter((i) => i.isMust);
 
+  /*
+   * 사진이 옆으로 더 있다는 것을 알려준다.
+   *
+   * 가로로 넘기는 동작은 세로 스크롤보다 덜 익숙해서, 알려주지 않으면 첫 장만
+   * 보고 지나친다. 첫 카드에서 한 번만 띄우고, 한 번 넘기면 사라진다.
+   */
+  const [swipeHint, setSwipeHint] = useState(rank === 1 && photos.length > 1);
+
   return (
     <View style={s.card}>
       <View accessible accessibilityLabel={spoken}>
@@ -216,22 +225,32 @@ function VerdictCard({
         이 여기서 전해진다. 조건 목록보다 앞에 두어 먼저 눈으로 보게 한다.
       */}
       {photos.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.photoRow}
-          contentContainerStyle={s.photoRowInner}
-        >
-          {photos.map((m, i) => (
-            <Image
-              key={i}
-              source={m.asset ?? { uri: m.uri }}
-              style={s.photo}
-              resizeMode="cover"
-              accessibilityLabel={`${property.name} 사진 ${i + 1}`}
-            />
-          ))}
-        </ScrollView>
+        <View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.photoRow}
+            contentContainerStyle={s.photoRowInner}
+            onScrollBeginDrag={() => setSwipeHint(false)}
+            scrollEventThrottle={64}
+          >
+            {photos.map((m, i) => (
+              <Image
+                key={i}
+                source={m.asset ?? { uri: m.uri }}
+                style={s.photo}
+                resizeMode="cover"
+                accessibilityLabel={`${property.name} 사진 ${i + 1}`}
+              />
+            ))}
+          </ScrollView>
+          <ScrollHint
+            text="옆으로 넘기면서 보세요"
+            direction="right"
+            visible={swipeHint}
+            bottom={space.md}
+          />
+        </View>
       ) : null}
 
       {/*
@@ -245,14 +264,20 @@ function VerdictCard({
             <Text style={[s.condMark, it.verdict === 'pass' ? s.markOk : s.markFix]}>
               {it.verdict === 'pass' ? '✓' : it.verdict === 'fixable' ? '△' : '○'}
             </Text>
+            {/*
+              맞은 것은 조건 문장을 그대로 보여주고 핵심 수치에만 형광을 칠한다.
+              고쳐야 하는 것은 조건 문장('화장실 문턱 없음')이 아니라 지금 상태
+              ('화장실에 2cm 문턱이 있어요')가 본론이므로 그것을 소제목으로 올린다.
+            */}
             <View style={s.condBody}>
-              <CondText text={it.label} emphasis={it.emphasis} on={it.verdict === 'pass'} />
-              {it.verdict !== 'pass' ? (
-                <Text style={s.condWhy}>
-                  {it.reason}
-                  {it.remedy ? ` — ${it.remedy}` : ''}
-                </Text>
-              ) : null}
+              {it.verdict === 'pass' ? (
+                <CondText text={it.label} emphasis={it.emphasis} on />
+              ) : (
+                <>
+                  <Text style={s.condText}>{it.reason}</Text>
+                  {it.remedy ? <Text style={s.condWhy}>{it.remedy}</Text> : null}
+                </>
+              )}
             </View>
           </View>
         ))}
@@ -262,13 +287,19 @@ function VerdictCard({
       {property.memo ? <Text style={s.memo}>{property.memo}</Text> : null}
 
       <View style={s.foot}>
-        <Text style={s.evidence}>
-          {result.checkedAt ? `중개사 실측 ${result.checkedAt}` : '아직 중개사 실측 전'}
+        <Text style={s.evidence} numberOfLines={1}>
+          {result.checkedAt ? `중개사 실측 ${measuredOn(result.checkedAt)}` : '아직 실측 전'}
         </Text>
         <SpeakLink text={spoken} label="듣기" />
       </View>
     </View>
   );
+}
+
+/** 2026-08-30 → 8월 30일. 줄이 접히지 않게 짧게 쓴다. */
+function measuredOn(iso: string): string {
+  const [, m, d] = iso.slice(0, 10).split('-');
+  return `${Number(m)}월 ${Number(d)}일`;
 }
 
 /** 맞은 조건은 핵심 대목에만 형광을 칠한다. 줄 전체를 칠하면 어디가 핵심인지 모른다. */
@@ -373,7 +404,12 @@ const s = StyleSheet.create({
     borderTopColor: color.surfaceSoft,
     paddingTop: space.xs,
   },
-  evidence: { fontSize: font.caption + 1, color: color.textMuted, fontFamily: family.regular },
+  evidence: {
+    flexShrink: 1,
+    fontSize: font.caption + 1,
+    color: color.textMuted,
+    fontFamily: family.regular,
+  },
 
   statusBox: {
     marginTop: space.xl,

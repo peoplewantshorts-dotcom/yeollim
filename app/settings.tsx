@@ -80,8 +80,8 @@ export default function Settings() {
 
       <Text style={s.meta}>
         {CLIP_INFO.count.female + CLIP_INFO.count.male > 0
-          ? `사람 목소리로 미리 만들어 둔 문장 ${CLIP_INFO.count.female}개예요. 인터넷이 없어도 들으실 수 있어요.`
-          : '아직 미리 만들어 둔 음성이 없어 기기 음성으로 읽어드려요.'}
+          ? '인터넷이 없어도 들으실 수 있어요'
+          : '아직 미리 만들어 둔 음성이 없어 기기 음성으로 읽어드려요'}
       </Text>
     </Screen>
   );
@@ -131,8 +131,8 @@ const s = StyleSheet.create({
   tryText: { fontSize: font.label, color: color.primaryText, fontFamily: family.bold },
   meta: {
     marginTop: space.xxl,
-    fontSize: font.caption + 1,
-    lineHeight: (font.caption + 1) * 1.6,
+    fontSize: font.body,
+    lineHeight: font.body * 1.6,
     color: color.textMuted,
     fontFamily: family.regular,
   },

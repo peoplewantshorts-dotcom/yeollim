@@ -16,10 +16,18 @@ export function ScrollHint({
   visible,
   /** 아래 버튼 영역 위로 얼마나 띄울지 */
   bottom = space.lg,
+  /**
+   * 어느 쪽으로 넘기는 것인지.
+   *
+   * 사진은 옆으로, 화면은 아래로 넘긴다. 손가락이 움직이는 방향이 다르면
+   * 말보다 먼저 그것으로 알아본다.
+   */
+  direction = 'down',
 }: {
   text?: string;
   visible: boolean;
   bottom?: number;
+  direction?: 'down' | 'right';
 }) {
   const fade = useRef(new Animated.Value(0)).current;
   const bob = useRef(new Animated.Value(0)).current;
@@ -56,7 +64,10 @@ export function ScrollHint({
     return () => loop.stop();
   }, [visible, bob]);
 
-  const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [-4, 10] });
+  const shift = bob.interpolate({ inputRange: [0, 1], outputRange: [-6, 12] });
+  const move = direction === 'right' ? { translateX: shift } : { translateY: shift };
+  // ☝︎ 는 위를 가리키는 손이라 방향에 맞게 돌린다
+  const spin = direction === 'right' ? '90deg' : '180deg';
 
   return (
     <Animated.View
@@ -67,7 +78,7 @@ export function ScrollHint({
       importantForAccessibility="no-hide-descendants"
     >
       <View style={s.pill}>
-        <Animated.Text style={[s.finger, { transform: [{ translateY }, { rotate: '180deg' }] }]}>
+        <Animated.Text style={[s.finger, { transform: [move, { rotate: spin }] }]}>
           ☝︎
         </Animated.Text>
         <Text style={s.text}>{text}</Text>
@@ -87,7 +98,6 @@ const s = StyleSheet.create({
     borderRadius: radius.chip,
     backgroundColor: 'rgba(20,18,34,0.88)',
   },
-  // ☝︎ 는 위를 가리키는 손이라 180도 돌려 아래로 향하게 한다
   finger: { fontSize: 24, color: '#FFFFFF' },
   text: { fontSize: font.label, color: '#FFFFFF', fontFamily: family.bold },
 });
