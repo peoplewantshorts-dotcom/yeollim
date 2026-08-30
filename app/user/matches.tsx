@@ -113,26 +113,58 @@ export default function MatchesScreen() {
           : '확인이 끝나는 대로 여기에 올려드릴게요'}
       </Sub>
 
-      {freshCount > 0 ? (
-        <View style={s.fresh}>
-          <Text style={s.freshText}>중개사가 {freshCount}곳을 새로 올렸어요</Text>
+      {/*
+        상태를 알약 세 개로 흩어 두었더니 서로 따로 놀았다. 같은 종류의 정보는
+        한 자리에 모아 같은 모양으로 보여준다. 보냈어요 화면과 같은 생김새다.
+      */}
+      {freshCount + stillChecking + droppedCount > 0 ? (
+        <View style={s.statusBox}>
+          {freshCount > 0 ? (
+            <StatusRow label="새로 올라온 곳" count={freshCount} strong />
+          ) : null}
+          {stillChecking > 0 ? (
+            <StatusRow label="확인하고 있는 곳" count={stillChecking} />
+          ) : null}
+          {droppedCount > 0 ? (
+            <StatusRow label="안 맞아서 뺀 곳" count={droppedCount} muted />
+          ) : null}
         </View>
-      ) : null}
-
-      {stillChecking > 0 ? (
-        <View style={s.waiting}>
-          <Text style={s.waitingText}>{stillChecking}곳은 중개사가 확인하고 있어요</Text>
-        </View>
-      ) : null}
-
-      {droppedCount > 0 ? (
-        <Text style={s.dropped}>안 맞는 집 {droppedCount}곳은 빼 드렸어요</Text>
       ) : null}
 
       {shown.map(({ property, result }) => (
         <VerdictCard key={property.id} property={property} result={result} fresh={isNew(property)} />
       ))}
     </Screen>
+  );
+}
+
+/** 요약 카드의 한 줄. 이름과 개수만 보여준다. */
+function StatusRow({
+  label,
+  count,
+  strong,
+  muted,
+}: {
+  label: string;
+  count: number;
+  /** 새로 들어온 것. 이것만 눈에 띄면 된다. */
+  strong?: boolean;
+  /** 이미 처리가 끝난 것. 알려주되 앞으로 나서지는 않는다. */
+  muted?: boolean;
+}) {
+  return (
+    <View style={s.statusRow} accessible accessibilityLabel={`${label} ${count}곳`}>
+      <Text style={[s.statusLabel, muted && s.statusLabelMuted]}>{label}</Text>
+      <Text
+        style={[
+          s.statusValue,
+          strong && s.statusValueStrong,
+          muted && s.statusValueMuted,
+        ]}
+      >
+        {count}곳
+      </Text>
+    </View>
   );
 }
 
@@ -205,28 +237,34 @@ const s = StyleSheet.create({
   },
 
 
-  dropped: {
-    marginTop: space.lg,
-    fontSize: font.label,
-    color: color.textMuted,
-    fontFamily: family.regular,
-  },
 
-  fresh: {
-    marginTop: space.lg,
-    alignSelf: 'flex-start',
-    paddingHorizontal: space.xl,
-    paddingVertical: space.md,
-    borderRadius: radius.chip,
-    backgroundColor: color.goBg,
-  },
-  freshText: { fontSize: font.label, color: color.goText, fontFamily: family.bold },
   freshTag: {
     marginBottom: space.xs,
     fontSize: font.caption + 1,
     color: color.goText,
     fontFamily: family.extrabold,
   },
+
+  statusBox: {
+    marginTop: space.xl,
+    backgroundColor: color.surface,
+    borderRadius: radius.card,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.sm,
+    ...shadow.card,
+  },
+  statusRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.lg,
+  },
+  statusLabel: { fontSize: font.body, color: color.text, fontFamily: family.semibold },
+  statusLabelMuted: { color: color.textMuted, fontFamily: family.regular },
+  statusValue: { fontSize: font.h2 + 2, color: color.textSub, fontFamily: family.extrabold },
+  statusValueStrong: { color: color.goText },
+  statusValueMuted: { color: color.textMuted },
 
   memo: { marginTop: space.sm, color: color.paperInkSub },
 
@@ -241,16 +279,4 @@ const s = StyleSheet.create({
   },
   evidence: { fontSize: font.caption, color: color.paperInkSub, fontFamily: family.regular },
 
-  waiting: {
-    marginTop: space.lg,
-    backgroundColor: color.primarySoft,
-    borderRadius: radius.button,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-  },
-  waitingText: {
-    fontSize: font.caption + 1,
-    color: color.onPrimarySoft,
-    fontFamily: family.semibold,
-  },
 });

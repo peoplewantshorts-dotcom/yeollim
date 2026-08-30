@@ -29,7 +29,77 @@ const eq = (label, got, want) => {
 };
 const group = (t) => console.log(`\n${t}`);
 
-const [p1, p2, p3, p4] = SEED_PROPERTIES;
+/*
+ * 판정 규칙을 시험하려면 여러 상태의 매물이 필요한데, 씨앗 데이터는 시연용이라
+ * 한 채뿐이고 앞으로도 바뀐다. 시험에 필요한 매물은 여기서 직접 만든다.
+ */
+const house = (facts) => ({
+  id: 't',
+  name: '시험용',
+  address: '',
+  checkedAt: '2026-08-30',
+  memo: '',
+  depositMan: null,
+  rentMan: null,
+  media: [],
+  stopMin: null,
+  storeMin: null,
+  hospitalMin: null,
+  facts: {
+    doorWidthCm: null,
+    outStepCount: null,
+    outRamp: null,
+    inStepCount: null,
+    bathroomSillCm: null,
+    bathroomDoorCm: null,
+    hasElevator: null,
+    floor: null,
+    parking: null,
+    ...facts,
+  },
+});
+
+/** 아무것도 재지 않은 집 */
+const p1 = { ...house({}), checkedAt: null };
+
+/** 경사로가 있어 통과하는 집 */
+const p2 = house({
+  doorWidthCm: 92,
+  outStepCount: 2,
+  outRamp: true,
+  inStepCount: 0,
+  bathroomSillCm: 0,
+  bathroomDoorCm: 82,
+  hasElevator: false,
+  floor: 1,
+});
+
+/** 문도 좁고 반계단도 있는 집 */
+const p3 = house({
+  doorWidthCm: 78,
+  outStepCount: 4,
+  outRamp: false,
+  inStepCount: 5,
+  bathroomSillCm: 4,
+  bathroomDoorCm: 65,
+  hasElevator: false,
+  floor: 2,
+});
+
+/** 조금 고치면 되는 집 */
+const p4 = house({
+  doorWidthCm: 85,
+  outStepCount: 1,
+  outRamp: false,
+  inStepCount: 0,
+  bathroomSillCm: 2,
+  bathroomDoorCm: 76,
+  hasElevator: false,
+  floor: 1,
+});
+
+// 씨앗 데이터는 화면에 실제로 뜨는 값이라 판정이 서는지만 확인한다.
+const [seed] = SEED_PROPERTIES;
 
 /* ------------------------------------------------------------------ */
 group('조건 도출 — 사용자에게 되묻지 않고 규칙이 붙인다');
@@ -71,21 +141,16 @@ eq('  같은 집이라도 몸에 따라 판정이 갈린다', match(cane, p4).ve
 /* ------------------------------------------------------------------ */
 group('반계단 — 승강기가 있어도 못 들어가는 경우');
 
-const halfStair = {
-  ...p1,
-  checkedAt: '2026-08-30',
-  facts: {
-    doorWidthCm: 95,
-    bathroomDoorCm: 85,
-    outStepCount: 0,
-    outRamp: false,
-    inStepCount: 4,
-    bathroomSillCm: 0,
-    hasElevator: true,
-    floor: 3,
-    parking: true,
-  },
-};
+const halfStair = house({
+  doorWidthCm: 95,
+  bathroomDoorCm: 85,
+  outStepCount: 0,
+  outRamp: false,
+  inStepCount: 4,
+  bathroomSillCm: 0,
+  hasElevator: true,
+  floor: 3,
+});
 const hs = match(power, halfStair);
 eq('승강기가 있어도 안쪽 반계단이 막으면 가지 마세요', hs.verdict, 'stop');
 eq('  이유를 반계단으로 짚어준다', hs.lines[0], '중앙현관 안에 계단이 4칸 있어요');
@@ -145,16 +210,27 @@ eq('  이유는 반계단', after.lines[0], '중앙현관 안에 계단이 3칸 
 /* ------------------------------------------------------------------ */
 group('실측 입력으로 판정이 완성된다');
 
-const measured = {
-  ...p1,
-  checkedAt: '2026-08-30',
-  facts: { ...filled, inStepCount: 0, doorWidthCm: 91, bathroomDoorCm: 84, floor: 1, hasElevator: false },
-};
+const measured = house({
+  ...filled,
+  inStepCount: 0,
+  doorWidthCm: 91,
+  bathroomDoorCm: 84,
+  floor: 1,
+  hasElevator: false,
+});
 const done = match(power, measured);
 eq('전부 확인되면 갈 수 있어요', done.verdict, 'go');
 eq('  보류 해제', done.pending, false);
 eq('  미확인 0', done.unknownMustCount, 0);
 eq('  1층이면 승강기를 따지지 않는다', done.items.find((i) => i.key === 'elevator').verdict, 'pass');
+
+/* ------------------------------------------------------------------ */
+group('시연용 매물 — 화면에 실제로 뜨는 값');
+
+const seedResult = match(power, seed);
+eq('중앙원룸은 전동휠체어로 갈 수 있다', seedResult.verdict, 'go');
+eq('  재지 않은 항목이 없다', seedResult.unknownMustCount, 0);
+eq('지팡이 사용자에게도 통과', match(cane, seed).verdict, 'go');
 
 console.log(fail === 0 ? '\n모두 통과' : `\n${fail}건 실패`);
 process.exit(fail ? 1 : 0);

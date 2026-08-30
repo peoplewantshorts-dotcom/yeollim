@@ -4,31 +4,17 @@ import { emptyFacts, type Property } from './types';
  * 실증 시연용 초기 매물.
  *
  * 제안서의 리스크 대응 그대로다 — 초기 매물 데이터가 없으면 첫 사용자에게
- * 판정이 하나도 안 나오므로, 협력 중개사무소 보유 매물 일부를 미리 구축한 상태에서
- * 시작한다. '행복빌라 101호'는 아직 실측 전(전부 모름)이라
- * 중개사 화면에서 채워 넣는 흐름을 그대로 보여준다.
+ * 보여줄 것이 하나도 없으므로, 협력 중개사무소 보유 매물 하나를 미리 재어 둔
+ * 상태에서 시작한다.
  *
- * 네 채로 판정 3단계와 보류가 모두 나온다.
+ * 이름만 그럴듯한 매물을 여러 채 늘어놓지 않는다. 실제로 재고 사진을 붙인
+ * 한 채가 이름만 있는 네 채보다 낫다. 나머지는 중개사가 직접 올린다.
  */
 export const SEED_PROPERTIES: Property[] = [
   {
     id: 'p1',
-    name: '행복빌라 101호',
-    address: '전북 익산시 ○○동',
-    checkedAt: null,
-    memo: '',
-    depositMan: null,
-    rentMan: null,
-    media: [],
-    stopMin: null,
-    storeMin: null,
-    hospitalMin: null,
-    facts: emptyFacts(),
-  },
-  {
-    id: 'p2',
     name: '중앙원룸 3동',
-    address: '전북 익산시 ○○동',
+    address: '전북 익산시 신동',
     checkedAt: '2026-08-29',
     memo: '남향이라 낮에 밝습니다. 관리비 5만원 별도.',
     depositMan: 500,
@@ -47,54 +33,6 @@ export const SEED_PROPERTIES: Property[] = [
       hasElevator: false,
       floor: 1,
       parking: true,
-    },
-  },
-  {
-    id: 'p3',
-    name: '○○하우스 2층',
-    address: '전북 익산시 ○○동',
-    checkedAt: '2026-08-28',
-    memo: '',
-    depositMan: 300,
-    rentMan: 30,
-    media: [],
-    stopMin: null,
-    storeMin: null,
-    hospitalMin: null,
-    facts: {
-      doorWidthCm: 78,
-      outStepCount: 4,
-      outRamp: false,
-      inStepCount: 5,
-      bathroomSillCm: 4,
-      bathroomDoorCm: 65,
-      hasElevator: false,
-      floor: 2,
-      parking: false,
-    },
-  },
-  {
-    id: 'p4',
-    name: '새봄원룸 102호',
-    address: '전북 익산시 ○○동',
-    checkedAt: '2026-08-30',
-    memo: '9월 중순 입주 가능합니다.',
-    depositMan: 1000,
-    rentMan: 45,
-    media: [],
-    stopMin: 8,
-    storeMin: 5,
-    hospitalMin: 15,
-    facts: {
-      doorWidthCm: 85,
-      outStepCount: 1,
-      outRamp: false,
-      inStepCount: 0,
-      bathroomSillCm: 2,
-      bathroomDoorCm: 76,
-      hasElevator: false,
-      floor: 1,
-      parking: false,
     },
   },
 ];
