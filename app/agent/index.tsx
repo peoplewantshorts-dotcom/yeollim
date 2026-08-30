@@ -118,6 +118,19 @@ export default function AgentInbox() {
         <Text style={s.contactPlain}>{CONTACT_SENTENCE[latest.contact]}</Text>
       )}
 
+      {latest.visitIds?.length ? (
+        <View style={s.visitBox}>
+          <Text style={s.visitHead}>이 집들을 보고 싶어 하세요</Text>
+          {properties
+            .filter((p) => latest.visitIds.includes(p.id))
+            .map((p) => (
+              <Text key={p.id} style={s.visitItem}>
+                · {p.name}
+              </Text>
+            ))}
+        </View>
+      ) : null}
+
       <Text style={s.listHead}>매물 {properties.length}건</Text>
       {properties.map((p) => (
         <PropertyRow key={p.id} property={p} />
@@ -218,6 +231,21 @@ const s = StyleSheet.create({
     marginTop: space.lg,
     fontSize: font.caption + 1,
     color: color.textMuted,
+    fontFamily: family.regular,
+  },
+
+  visitBox: {
+    marginTop: space.lg,
+    backgroundColor: color.goBg,
+    borderRadius: radius.card,
+    padding: space.xl,
+  },
+  visitHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.goText },
+  visitItem: {
+    marginTop: space.xs,
+    fontSize: font.label,
+    lineHeight: font.label * 1.5,
+    color: color.goText,
     fontFamily: family.regular,
   },
 

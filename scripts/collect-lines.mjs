@@ -24,6 +24,7 @@ execSync(
 const require = createRequire(import.meta.url);
 const Q = require(path.join(out, 'questions'));
 const M = require(path.join(out, 'matching'));
+const S = require(path.join(out, 'seed'));
 
 /** 코드에서 긁어올 수 없는 화면 문구는 여기 적는다. */
 const EXTRA = [
@@ -109,6 +110,22 @@ for (const m of ['power', 'manual', 'cane', 'crutch', 'walker', 'none']) {
 // 판정 3단계와 보류
 for (const v of Object.values(M.VERDICT_LABEL)) add(v);
 add(M.PENDING_LABEL);
+
+// 시연 매물의 이름과 메모. 화면에 실제로 뜨는 문장이라 이것까지 사람 목소리로 낸다.
+for (const p of S.SEED_PROPERTIES) {
+  add(p.name);
+  add(p.memo);
+}
+
+// 고칠 수 있을 때 알려주는 요청 문구
+[
+  '문을 끝까지 열면 몇 cm 더 나와요',
+  '경사판을 놓아 달라고 요청해 보세요',
+  '작은 경사판을 놓아 달라고 요청해 보세요',
+  '문짝을 접이문으로 바꿔 달라고 요청해 보세요',
+  '1층이라 승강기가 필요 없어요',
+  '중앙현관 앞에 경사로가 있어요',
+].forEach(add);
 
 EXTRA.forEach(add);
 

@@ -23,11 +23,14 @@ export function ScrollHint({
    * 말보다 먼저 그것으로 알아본다.
    */
   direction = 'down',
+  /** 가운데가 아니라 한쪽 구석에 둔다. 사진을 가리지 않게. */
+  corner,
 }: {
   text?: string;
   visible: boolean;
   bottom?: number;
   direction?: 'down' | 'right';
+  corner?: boolean;
 }) {
   const fade = useRef(new Animated.Value(0)).current;
   const bob = useRef(new Animated.Value(0)).current;
@@ -71,7 +74,7 @@ export function ScrollHint({
 
   return (
     <Animated.View
-      style={[s.wrap, { opacity: fade, bottom }]}
+      style={[s.wrap, corner && s.wrapCorner, { opacity: fade, bottom }]}
       pointerEvents="none"
       // 화면 낭독기는 이 안내를 이미 순서대로 읽어주므로 중복해서 말하지 않는다.
       accessibilityElementsHidden
@@ -89,6 +92,7 @@ export function ScrollHint({
 
 const s = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  wrapCorner: { alignItems: 'flex-end', right: space.md },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -84,7 +84,7 @@ export default function TermsScreen() {
     setTerms((t) => ({ ...t, [key]: value }));
 
   /** 여러 개 고를 수 있는 항목을 켜고 끈다. */
-  const toggleIn = (key: 'deposit' | 'rent', id: string) =>
+  const toggleIn = (key: 'deposit' | 'rent' | 'rooms', id: string) =>
     setTerms((t) => ({
       ...t,
       [key]: t[key].includes(id) ? t[key].filter((x) => x !== id) : [...t[key], id],
@@ -197,10 +197,8 @@ export default function TermsScreen() {
               key={o.id}
               index={i + 1}
               label={o.label}
-              on={terms.rooms === o.id}
-              onPress={() =>
-                set('rooms', terms.rooms === o.id ? null : (o.id as GeneralTerms['rooms']))
-              }
+              on={terms.rooms.includes(o.id)}
+              onPress={() => toggleIn('rooms', o.id)}
             />
           ))}
         </View>
@@ -267,7 +265,7 @@ export default function TermsScreen() {
           visible
           title={VOICE_TITLE[speaking]}
           freeText={speaking === 'area' || speaking === 'deposit' || speaking === 'rent'}
-          multi={speaking === 'near'}
+          multi={speaking === 'near' || speaking === 'rooms'}
           choices={
             speaking === 'deposit'
               ? voiceChoicesFor(DEPOSIT_BANDS)
@@ -288,7 +286,7 @@ export default function TermsScreen() {
               const bands = speaking === 'deposit' ? DEPOSIT_BANDS : RENT_BANDS;
               set(speaking, bandsInRange(bands, range));
             }
-            else if (speaking === 'rooms') set('rooms', id as GeneralTerms['rooms']);
+            else if (speaking === 'rooms') toggleIn('rooms', id);
             else if (speaking === 'floor') set('floorPref', id as GeneralTerms['floorPref']);
             else toggleNear(id);
           }}

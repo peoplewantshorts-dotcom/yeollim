@@ -9,6 +9,7 @@ import {
   Screen,
   SpeakLink,
   Sub,
+  useSteadyPress,
 } from '../../src/components/ui';
 import {
   match,
@@ -21,7 +22,7 @@ import {
 import type { Property } from '../../src/domain/types';
 import { ScrollHint } from '../../src/components/ScrollHint';
 import { useStore } from '../../src/store';
-import { color, family, font, keepAll, radius, shadow, space } from '../../src/theme';
+import { color, family, font, HIT, keepAll, radius, shadow, space, TAP_BIG } from '../../src/theme';
 
 const ORDER: Record<Verdict, number> = { go: 0, fix: 1, stop: 3 };
 /** 확인 중인 집은 확정된 집 뒤, '가지 마세요'보다는 앞에 둔다. */
@@ -52,7 +53,7 @@ const PENDING_SKIN = { bar: color.unknownBar, bg: color.unknownBg, fg: color.unk
  */
 export default function MatchesScreen() {
   const router = useRouter();
-  const { profile, properties, requests } = useStore();
+  const { profile, properties, requests, setVisitIds } = useStore();
 
   const results = useMemo(() => {
     if (!profile) return [];
@@ -88,6 +89,19 @@ export default function MatchesScreen() {
    * 실제 알림(푸시)은 서버가 있어야 보낼 수 있다. 지금은 기기 안에만 두는
    * 구조라, 화면을 열었을 때 무엇이 새로 들어왔는지를 알려주는 것까지만 한다.
    */
+  /*
+   * 보러 갈 집 고르기.
+   *
+   * 판정은 갈 수 있는지를 알려줄 뿐이고 어디로 갈지는 본인이 정한다.
+   * 고른 것을 중개사에게 전해 두면 그 집만 준비하면 되므로 서로 헛수고가 줄어든다.
+   */
+  const [picked, setPicked] = useState<string[]>(() => requests[0]?.visitIds ?? []);
+  const [told, setTold] = useState(false);
+  const toggle = (id: string) => {
+    setTold(false);
+    setPicked((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
+  };
+
   const sentOn = requests[0]?.sentAt.slice(0, 10) ?? null;
   const isNew = (p: Property) =>
     sentOn !== null && p.checkedAt !== null && p.checkedAt >= sentOn;
@@ -104,7 +118,22 @@ export default function MatchesScreen() {
   const droppedCount = results.length - shown.length;
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        picked.length > 0 ? (
+          <>
+            <PrimaryButton
+              label={`이 집으로 보여주세요 · ${picked.length}곳`}
+              onPress={() => {
+                setVisitIds(picked);
+                setTold(true);
+              }}
+            />
+            {told ? <Text style={s.told}>중개사에게 전했어요</Text> : null}
+          </>
+        ) : undefined
+      }
+    >
       <AppBar title="확인 결과" />
       {confirmed > 0 ? (
         <H1>
@@ -146,6 +175,8 @@ export default function MatchesScreen() {
           result={result}
           fresh={isNew(property)}
           rank={result.pending ? undefined : i + 1}
+          picked={picked.includes(property.id)}
+          onPick={() => toggle(property.id)}
         />
       ))}
     </Screen>
@@ -187,12 +218,16 @@ function VerdictCard({
   result,
   fresh,
   rank,
+  picked,
+  onPick,
 }: {
   property: Property;
   result: MatchResult;
   fresh?: boolean;
   /** 조건이 많이 맞은 순서. 아직 다 재지 않은 집에는 붙이지 않는다. */
   rank?: number;
+  picked: boolean;
+  onPick: () => void;
 }) {
   const spoken = speakableResult(property.name, result);
   const photos = property.media.filter((m) => m.kind === 'image');
@@ -211,11 +246,15 @@ function VerdictCard({
   return (
     <View style={s.card}>
       <View accessible accessibilityLabel={spoken.join('. ')}>
-        {rank ? (
-          <View style={s.rank}>
-            <Text style={s.rankText}>{rank}순위</Text>
-          </View>
-        ) : null}
+        <View style={s.head}>
+          {rank ? (
+            <View style={s.rank}>
+              <Text style={s.rankText}>{rank}순위</Text>
+            </View>
+          ) : null}
+          <View style={s.headGap} />
+          <PickBox on={picked} onPress={onPick} name={property.name} />
+        </View>
 
         <Text style={s.name}>{property.name}</Text>
         {fresh ? <Text style={s.freshTag}>새로 올라왔어요</Text> : null}
@@ -248,8 +287,9 @@ function VerdictCard({
             ))}
           </ScrollView>
           <ScrollHint
-            text="옆으로 넘기면서 보세요"
+            text="옆으로 넘겨보세요"
             direction="right"
+            corner
             visible={swipeHint}
             bottom={space.md}
           />
@@ -324,6 +364,24 @@ function VerdictCard({
   );
 }
 
+/** 보러 갈 집으로 고르는 칸 */
+function PickBox({ on, onPress, name }: { on: boolean; onPress: () => void; name: string }) {
+  const press = useSteadyPress(onPress);
+  return (
+    <Pressable
+      onPress={press}
+      style={[s.pick, on && s.pickOn]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      aria-checked={on}
+      accessibilityLabel={`${name}, 보러 갈 집으로 고르기`}
+    >
+      <Text style={[s.pickMark, on && s.pickMarkOn]}>{on ? '✓' : ''}</Text>
+      <Text style={[s.pickText, on && s.pickTextOn]}>보러 갈래요</Text>
+    </Pressable>
+  );
+}
+
 /** 2026-08-30 → 8월 30일. 줄이 접히지 않게 짧게 쓴다. */
 function measuredOn(iso: string): string {
   const [, m, d] = iso.slice(0, 10).split('-');
@@ -354,8 +412,33 @@ const s = StyleSheet.create({
     ...shadow.card,
   },
 
+  head: { flexDirection: 'row', alignItems: 'center' },
+  headGap: { flex: 1 },
+  pick: {
+    minHeight: HIT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.chip,
+    borderWidth: 2,
+    borderColor: color.border,
+  },
+  pickOn: { borderColor: color.primary, backgroundColor: color.primarySoft },
+  pickMark: { width: 14, fontSize: font.caption + 1, color: color.primaryText, fontFamily: family.bold },
+  pickMarkOn: { color: color.onPrimarySoft },
+  pickText: { fontSize: font.caption + 1, color: color.textSub, fontFamily: family.bold },
+  pickTextOn: { color: color.onPrimarySoft },
+
+  told: {
+    marginTop: space.md,
+    textAlign: 'center',
+    fontSize: font.label,
+    color: color.goText,
+    fontFamily: family.bold,
+  },
+
   rank: {
-    alignSelf: 'flex-start',
     paddingHorizontal: space.md,
     paddingVertical: 5,
     borderRadius: radius.chip,
@@ -419,16 +502,17 @@ const s = StyleSheet.create({
     padding: space.lg,
   },
   zoomImg: { width: '100%', height: '80%' },
+  // 어두운 배경 위에서 테두리만 두르니 눈에 안 들어왔다. 흰 알약으로 채운다.
   zoomClose: {
     marginTop: space.xl,
-    minHeight: 56,
+    minHeight: TAP_BIG,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: space.xxl,
+    paddingHorizontal: space.xxxl,
     borderRadius: radius.chip,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: '#FFFFFF',
   },
-  zoomCloseText: { color: '#FFFFFF', fontSize: font.body, fontFamily: family.bold },
+  zoomCloseText: { color: color.text, fontSize: font.body, fontFamily: family.extrabold },
 
 
 

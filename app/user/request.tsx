@@ -15,7 +15,12 @@ import {
   SpeakLink,
   Sub,
 } from '../../src/components/ui';
-import { CONTACT_SENTENCE, MOBILITY_SENTENCE, termLines } from '../../src/domain/questions';
+import {
+  CONTACT_SENTENCE,
+  MOBILITY_SENTENCE,
+  termLines,
+  termSpokenLines,
+} from '../../src/domain/questions';
 import { useStore } from '../../src/store';
 import { color, family, font, keepAll, space } from '../../src/theme';
 
@@ -64,7 +69,7 @@ export default function RequestScreen() {
     MOBILITY_SENTENCE[profile.mobility],
     CONTACT_SENTENCE[profile.contact],
     ...(musts.length ? ['꼭 필요해요', ...musts.map((r) => r.cardText)] : []),
-    ...(terms.length ? ['이런 집이면 좋겠어요', ...terms] : []),
+    ...(terms.length ? ['이런 집이면 좋겠어요', ...termSpokenLines(profile.terms)] : []),
   ].filter(Boolean);
 
   const send = () => {

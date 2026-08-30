@@ -259,6 +259,27 @@ const NEAR_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 /**
+ * 일반 조건을 소리로 읽을 조각 목록.
+ *
+ * 화면에 쓰는 문장('보증금 100~300만원 · 월세 30~40만원')은 골라 놓은 값에 따라
+ * 매번 달라져서 미리 만들어 둘 수 없다. 그러면 그 줄만 기계 소리로 읽힌다.
+ * 그래서 소리로 읽을 때는 미리 만들어 둔 조각만 이어 붙인다.
+ */
+export function termSpokenLines(t: GeneralTerms | undefined | null): string[] {
+  if (!t) return [];
+  const label = (arr: { id: string; label: string }[], ids: string[]) =>
+    ids.map((id) => arr.find((o) => o.id === id)?.label ?? '').filter(Boolean);
+
+  return [
+    ...(t.deposit?.length ? ['보증금', ...label(DEPOSIT_BANDS, t.deposit)] : []),
+    ...(t.rent?.length ? ['월세', ...label(RENT_BANDS, t.rent)] : []),
+    ...(t.rooms?.length ? label(ROOM_OPTIONS, t.rooms) : []),
+    ...(t.floorPref ? label(FLOOR_OPTIONS, [t.floorPref]) : []),
+    ...(t.near?.length ? ['걸어서 갈 수 있으면 좋은 곳', ...label(NEAR_OPTIONS, t.near)] : []),
+  ];
+}
+
+/**
  * 일반 조건을 요청서에 실을 문장으로 바꾼다.
  *
  * 비워 둔 항목은 줄 자체를 만들지 않는다. '보증금 미정' 같은 줄을 넣으면
@@ -276,9 +297,12 @@ export function termLines(t: GeneralTerms | undefined | null): string[] {
     t.rent?.length ? `월세 ${band(t.rent)}` : '',
   ].filter(Boolean);
   if (money.length) out.push(money.join(' · '));
-  if (t.rooms === 'one') out.push('원룸이면 돼요');
-  if (t.rooms === 'two') out.push('방 두 개면 좋겠어요');
-  if (t.rooms === 'three') out.push('방 세 개 이상이면 좋겠어요');
+  if (t.rooms?.length) {
+    const ROOM_LABEL: Record<string, string> = Object.fromEntries(
+      ROOM_OPTIONS.map((o) => [o.id, o.label]),
+    );
+    out.push(`${t.rooms.map((id) => ROOM_LABEL[id] ?? id).join(', ')}이면 좋겠어요`);
+  }
   if (t.floorPref === 'low') out.push('낮은 층이 좋아요');
   if (t.floorPref === 'high') out.push('높은 층이 좋아요');
   if (t.near.length) {

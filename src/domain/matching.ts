@@ -284,9 +284,14 @@ export function match(requirements: Requirement[], property: Property): MatchRes
 export function speakableResult(propertyName: string, r: MatchResult): string[] {
   const musts = r.items.filter((i) => i.isMust);
   const ok = musts.filter((i) => i.verdict === 'pass').map((i) => i.label);
+  /*
+   * 고칠 항목은 지금 상태에 잰 숫자가 들어 있어 미리 만들어 둘 수 없다.
+   * 그 문장을 그대로 읽으면 앞뒤는 사람 목소리인데 가운데만 기계 소리가 나서
+   * 오히려 더 어색하다. 숫자는 화면에 보이니 소리로는 조건과 요청만 읽는다.
+   */
   const todo = musts
     .filter((i) => i.verdict === 'fixable')
-    .map((i) => [i.reason, i.remedy].filter(Boolean).join('. '));
+    .flatMap((i) => [i.label, i.remedy].filter(Boolean) as string[]);
 
   return [
     propertyName,

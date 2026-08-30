@@ -78,7 +78,8 @@ export interface GeneralTerms {
    */
   deposit: string[];
   rent: string[];
-  rooms: 'one' | 'two' | 'three' | null;
+  /** 방 개수도 여러 개 고를 수 있다. '두 개나 세 개'가 자연스러운 조건이다. */
+  rooms: string[];
   floorPref: 'any' | 'low' | 'high' | null;
   /** 걸어서 갈 수 있으면 좋은 곳 */
   near: string[];
@@ -88,7 +89,7 @@ export const emptyTerms = (): GeneralTerms => ({
   area: '',
   deposit: [],
   rent: [],
-  rooms: null,
+  rooms: [],
   floorPref: null,
   near: [],
 });
@@ -214,6 +215,13 @@ export interface RequestCard {
   sentAt: string;
   /** 중개사가 붙인 매물 후보 */
   propertyIds: string[];
+  /**
+   * 당사자가 직접 보러 가겠다고 고른 집.
+   *
+   * 판정은 갈 수 있는지를 알려줄 뿐이고 어디로 갈지는 본인이 정한다.
+   * 고른 것을 중개사에게 전해 두면 그 집만 준비하면 되므로 서로 헛수고가 줄어든다.
+   */
+  visitIds: string[];
 }
 
 /** 통화 녹음에서 뽑아낸 한 항목. 근거 구간을 반드시 함께 남긴다. */

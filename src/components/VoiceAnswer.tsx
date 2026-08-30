@@ -134,8 +134,20 @@ export function VoiceAnswer({
 
     const m = matchVoice(said, choices);
     setRanked(m.ranked);
+
+    /*
+     * 여러 개 고를 수 있는 질문에서 "두 개나 세 개"처럼 한 번에 둘을 말하면
+     * 둘 다 기준을 넘는다. 그때 하나만 확정해 버리면 나머지는 다시 말해야 한다.
+     * 기준을 넘은 것이 둘 이상이면 고르는 화면을 띄운다.
+     */
+    const strong = m.ranked.filter((r) => r.score >= ACCEPT).length;
+    if (multi && strong > 1) {
+      setPhase('choose');
+      return;
+    }
+
     setPhase(m.action === 'confirm' ? 'confirm' : m.action === 'choose' ? 'choose' : 'unclear');
-  }, [choices, freeText, clearTimers]);
+  }, [choices, freeText, clearTimers, multi]);
 
   const listen = useCallback(async () => {
     setHeard('');
@@ -306,7 +318,11 @@ export function VoiceAnswer({
               {multi && ranked.length > 1 ? (
                 <View style={s.gapSm}>
                   <PrimaryButton
-                    label={`${Math.min(ranked.length, 3)}개 모두 고를래요`}
+                    label={
+                      Math.min(ranked.length, 3) === 2
+                        ? '둘 다 고를래요'
+                        : `${Math.min(ranked.length, 3)}개 모두 고를래요`
+                    }
                     onPress={() => {
                       stop();
                       ranked.slice(0, 3).forEach((r) => onPick(r.id));
