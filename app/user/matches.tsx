@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Accent,
@@ -7,10 +7,6 @@ import {
   H1,
   PrimaryButton,
   Screen,
-  NoteLine,
-  NoteSheet,
-  noteText,
-  RULE,
   SpeakLink,
   Sub,
 } from '../../src/components/ui';
@@ -24,7 +20,7 @@ import {
 } from '../../src/domain/matching';
 import type { Property } from '../../src/domain/types';
 import { useStore } from '../../src/store';
-import { color, family, font, radius, shadow, space } from '../../src/theme';
+import { color, family, font, keepAll, radius, shadow, space } from '../../src/theme';
 
 const ORDER: Record<Verdict, number> = { go: 0, fix: 1, stop: 3 };
 /** 확인 중인 집은 확정된 집 뒤, '가지 마세요'보다는 앞에 둔다. */
@@ -200,44 +196,69 @@ function VerdictCard({
   const skin = result.pending ? PENDING_SKIN : SKIN[result.verdict];
   const shape = result.pending ? PENDING_SHAPE : VERDICT_SHAPE[result.verdict];
   const spoken = speakableResult(property.name, result);
+  const photos = property.media.filter((m) => m.kind === 'image');
 
   return (
-    <NoteSheet edge={skin.bar} style={s.card}>
+    <View style={s.card}>
       <View accessible accessibilityLabel={spoken}>
-        {/* 판정은 색 하나에 기대지 않는다. 도형 + 글자 + 색 + 음성 네 겹이다. */}
-        {rank ? (
-          <View style={s.rankRow}>
+        <View style={s.head}>
+          {rank ? (
             <View style={s.rank}>
               <Text style={s.rankText}>{rank}순위</Text>
             </View>
-            <Text style={s.rankWhy}>조건 {result.passCount}가지가 맞아요</Text>
-          </View>
-        ) : null}
-
-        <View style={s.verdictRow}>
+          ) : null}
           {/*
-            도형은 색을 못 보는 분에게 판정을 알리는 유일한 단서다.
-            막대용 색(bar)을 그대로 쓰니 배경 위에서 2.94~4.34:1 로 기준에 못 미쳤다.
-            채우는 색과 읽는 색은 요구 조건이 다르다. 글자와 같은 색(fg)으로 그린다.
+            판정은 색 하나에 기대지 않는다. 도형 + 글자 + 색 + 음성 네 겹이다.
+            도형은 색을 못 보는 분에게 판정을 알리는 유일한 단서라
+            막대용 색이 아니라 글자와 같은 색(fg)으로 그린다.
           */}
-          <Text style={[s.mark, { color: skin.fg }]}>{shape}</Text>
-          <Text style={[s.verdictText, { color: skin.fg }]}>{result.title}</Text>
+          <View style={[s.verdict, { backgroundColor: skin.bg }]}>
+            <Text style={[s.mark, { color: skin.fg }]}>{shape}</Text>
+            <Text style={[s.verdictText, { color: skin.fg }]}>{result.title}</Text>
+          </View>
         </View>
 
         <Text style={s.name}>{property.name}</Text>
+        {rank ? <Text style={s.why}>조건 {result.passCount}가지가 맞아요</Text> : null}
         {fresh ? <Text style={s.freshTag}>새로 올라왔어요</Text> : null}
-
-        {result.lines.map((l, i) => (
-          <Text key={i} style={noteText}>
-            {l}
-          </Text>
-        ))}
-
-        <NoteLine text={result.note} mark="→" strong />
-
-        {/* 숫자로 담기지 않은 것을 중개사가 적어 보냈다면 그대로 전한다. */}
-        {property.memo ? <Text style={[noteText, s.memo]}>{property.memo}</Text> : null}
       </View>
+
+      {/*
+        중개사가 보낸 사진.
+        숫자로는 담기지 않는 것을 눈으로 확인하는 자리다. 판정 바로 아래에 두어
+        먼저 판정을 읽고 사진으로 확인하는 순서가 되게 한다.
+      */}
+      {photos.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.photoRow}
+          contentContainerStyle={s.photoRowInner}
+        >
+          {photos.map((m, i) => (
+            <Image
+              key={i}
+              source={m.asset ?? { uri: m.uri }}
+              style={s.photo}
+              resizeMode="cover"
+              accessibilityLabel={`${property.name} 사진 ${i + 1}`}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {result.lines.map((l, i) => (
+        <Text key={i} style={s.line}>
+          {l}
+        </Text>
+      ))}
+
+      <View style={[s.noteBox, { backgroundColor: skin.bg }]}>
+        <Text style={[s.noteText, { color: skin.fg }]}>{result.note}</Text>
+      </View>
+
+      {/* 숫자로 담기지 않은 것을 중개사가 적어 보냈다면 그대로 전한다. */}
+      {property.memo ? <Text style={s.memo}>{property.memo}</Text> : null}
 
       <View style={s.foot}>
         <Text style={s.evidence}>
@@ -245,44 +266,110 @@ function VerdictCard({
         </Text>
         <SpeakLink text={spoken} label="듣기" />
       </View>
-    </NoteSheet>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  card: { marginTop: space.lg },
-
-  verdictRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  // 도형 자체가 표식이다. 색을 못 보거나 흑백으로 뽑아도 ● ▲ ■ ○ 로 구분된다.
-  mark: { fontSize: 13, lineHeight: RULE, fontFamily: family.regular },
-  verdictText: { fontSize: font.label, lineHeight: RULE, fontFamily: family.bold, letterSpacing: -0.3 },
-
-  name: {
-    fontSize: 24,
-    lineHeight: RULE,
-    fontFamily: family.extrabold,
-    color: color.paperInk,
-    letterSpacing: -0.6,
+  card: {
+    marginTop: space.lg,
+    backgroundColor: color.surface,
+    borderRadius: radius.card,
+    paddingHorizontal: space.xl,
+    paddingTop: space.xl,
+    paddingBottom: space.sm,
+    ...shadow.card,
   },
 
-
-
-  freshTag: {
-    marginBottom: space.xs,
-    fontSize: font.caption + 1,
-    color: color.goText,
-    fontFamily: family.extrabold,
-  },
-
-  rankRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
+  head: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexWrap: 'wrap' },
   rank: {
     paddingHorizontal: space.md,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: radius.chip,
     backgroundColor: color.primary,
   },
   rankText: { fontSize: font.caption + 1, color: color.onPrimary, fontFamily: family.extrabold },
-  rankWhy: { fontSize: font.caption + 1, color: color.paperInkSub, fontFamily: family.semibold },
+
+  verdict: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: 5,
+    borderRadius: radius.chip,
+  },
+  // 도형 자체가 표식이다. 색을 못 보거나 흑백으로 뽑아도 ● ▲ ■ ○ 로 구분된다.
+  mark: { fontSize: 13, fontFamily: family.regular },
+  verdictText: { fontSize: font.caption + 1, fontFamily: family.extrabold },
+
+  name: {
+    marginTop: space.lg,
+    fontSize: 26,
+    lineHeight: 34,
+    fontFamily: family.extrabold,
+    color: color.text,
+    letterSpacing: -0.6,
+    ...keepAll,
+  },
+  why: {
+    marginTop: space.xs,
+    fontSize: font.label,
+    color: color.textMuted,
+    fontFamily: family.semibold,
+  },
+  freshTag: {
+    marginTop: space.xs,
+    fontSize: font.label,
+    color: color.goText,
+    fontFamily: family.extrabold,
+  },
+
+  photoRow: { marginTop: space.lg, marginHorizontal: -space.xl },
+  photoRowInner: { paddingHorizontal: space.xl, gap: space.md },
+  photo: { width: 260, height: 176, borderRadius: radius.button, backgroundColor: color.bg },
+
+  line: {
+    marginTop: space.sm,
+    fontSize: font.label,
+    lineHeight: font.label * 1.55,
+    color: color.textSub,
+    fontFamily: family.regular,
+    ...keepAll,
+  },
+
+  noteBox: {
+    marginTop: space.lg,
+    borderRadius: radius.button,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  noteText: {
+    fontSize: font.label,
+    lineHeight: font.label * 1.45,
+    fontFamily: family.bold,
+    ...keepAll,
+  },
+
+  memo: {
+    marginTop: space.lg,
+    fontSize: font.label,
+    lineHeight: font.label * 1.55,
+    color: color.textMuted,
+    fontFamily: family.regular,
+    ...keepAll,
+  },
+
+  foot: {
+    marginTop: space.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    borderTopWidth: 1,
+    borderTopColor: color.surfaceSoft,
+    paddingTop: space.xs,
+  },
+  evidence: { fontSize: font.caption + 1, color: color.textMuted, fontFamily: family.regular },
 
   statusBox: {
     marginTop: space.xl,
@@ -304,18 +391,4 @@ const s = StyleSheet.create({
   statusValue: { fontSize: font.h2 + 2, color: color.textSub, fontFamily: family.extrabold },
   statusValueStrong: { color: color.goText },
   statusValueMuted: { color: color.textMuted },
-
-  memo: { marginTop: space.sm, color: color.paperInkSub },
-
-  foot: {
-    marginTop: space.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: color.paperRule,
-    paddingTop: space.xs,
-  },
-  evidence: { fontSize: font.caption, color: color.paperInkSub, fontFamily: family.regular },
-
 });

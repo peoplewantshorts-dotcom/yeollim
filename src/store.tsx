@@ -1,8 +1,32 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SEED_PROPERTIES } from './domain/seed';
+
+/**
+ * 시연용 매물에 딸린 사진.
+ *
+ * 이 사진들은 기기에 없고 앱에 함께 들어 있다. 도메인(seed)은 자산 파일을
+ * 들고 있지 않아야 판정 규칙만 따로 떼어 시험할 수 있으므로 여기서 붙인다.
+ */
+const SEED_MEDIA: Record<string, Media[]> = {
+  p1: [
+    { uri: '', kind: 'image', asset: require('../assets/p1-ramp.jpg') },
+    { uri: '', kind: 'image', asset: require('../assets/p1-door.jpg') },
+  ],
+  p2: [
+    { uri: '', kind: 'image', asset: require('../assets/p2-entry.jpg') },
+    { uri: '', kind: 'image', asset: require('../assets/p2-door.jpg') },
+    { uri: '', kind: 'image', asset: require('../assets/p2-sill.jpg') },
+    { uri: '', kind: 'image', asset: require('../assets/p2-bath.jpg') },
+  ],
+};
+
+const seeded: Property[] = SEED_PROPERTIES.map((p) => ({
+  ...p,
+  media: SEED_MEDIA[p.id] ?? p.media,
+}));
 import { emptyFacts } from './domain/types';
-import type { Property, PropertyFacts, RequestCard, UserProfile } from './domain/types';
+import type { Media, Property, PropertyFacts, RequestCard, UserProfile } from './domain/types';
 
 // 프로필과 매물 데이터 구조가 바뀌었다. 예전에 저장된 값을 그대로 읽으면
 // 없는 항목을 참조하다 판정이 어긋나므로 저장 키를 올려 새로 시작한다.
@@ -33,7 +57,7 @@ const initial: AppState = {
   voiceRate: 1,
   reduceMotion: false,
   profile: null,
-  properties: SEED_PROPERTIES,
+  properties: seeded,
   requests: [],
 };
 

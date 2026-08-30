@@ -132,8 +132,16 @@ export const emptyFacts = (): PropertyFacts => ({
 
 /** 매물에 붙는 사진 한 장 또는 영상 하나 */
 export interface Media {
+  /** 기기 안의 파일 주소. 중개사가 방금 찍은 것. */
   uri: string;
   kind: 'image' | 'video';
+  /**
+   * 앱에 함께 넣어 둔 사진.
+   *
+   * 시연용 매물의 사진은 기기에 없으므로 앱 안에 넣어 둔다.
+   * 이 값이 있으면 uri 대신 이것을 쓴다.
+   */
+  asset?: number;
 }
 
 export interface Property {

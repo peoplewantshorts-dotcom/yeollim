@@ -33,7 +33,7 @@ export default function Settings() {
     <Screen>
       <AppBar title="설정" settings={false} />
 
-      <H1>편하신 대로 바꾸세요</H1>
+      <H1>어떻게 읽어드릴까요?</H1>
       <Sub>언제든 다시 바꿀 수 있어요</Sub>
 
       <Card>
