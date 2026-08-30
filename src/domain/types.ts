@@ -1,0 +1,171 @@
+/** 열림 도메인 타입 */
+
+/** 요청서 항목의 우선순위. 판정에 직접 쓰인다. */
+export type Priority = 'must' | 'nice';
+
+/**
+ * 이동 방법.
+ *
+ * 프로필에서 사용자에게 직접 묻는 유일한 몸 정보다.
+ * 진단명이나 장애 등급은 묻지 않는다 — 등록증에 '정도가 심한 장애인' 한 줄로만
+ * 표기돼 물어봐야 판정에 쓸 정보가 나오지 않고, 묻는 행위 자체가 낙인이 된다.
+ */
+export type MobilityId = 'power' | 'manual' | 'cane' | 'crutch' | 'walker' | 'none';
+
+/** 중개사와 주고받는 방식. 청각장애와 언어장애가 이 한 문항으로 함께 처리된다. */
+export type ContactId = 'text' | 'phone';
+
+/**
+ * 매물에서 확인하는 접근성 지표 키.
+ *
+ * BF(장애물 없는 생활환경) 인증심사기준과 국내 무장애 주택설계 연구에서 도출하고,
+ * 팀장의 중개 실무에서 '줄자로 30초 안에 잴 수 있는가'로 한 번 더 걸렀다.
+ * 매물마다 답이 갈리지 않는 항목(화장실 손잡이·시각경보기)은 물어봐야
+ * 전부 같은 답이 나오므로 넣지 않았다.
+ */
+export type FactKey =
+  | 'doorWidth' // 현관문 폭
+  | 'outStep' // 중앙현관문 앞 계단 (경사로가 있으면 면제)
+  | 'inStep' // 중앙현관 들어가서 1층 집 앞까지의 계단, 이른바 반계단
+  | 'bathroomSill' // 화장실 문턱
+  | 'bathroomDoor' // 화장실 문 폭
+  | 'elevator'; // 승강기
+
+/** 사용자의 이동 방법에서 자동으로 도출된 조건 하나. */
+export interface Requirement {
+  key: FactKey;
+  /** 판정에 쓰는 수치 임계값. 예: 허용 계단 수 0칸, 필요한 문 폭 90cm */
+  threshold: number | null;
+  priority: Priority;
+  /** 요청서에 그대로 인쇄되는 쉬운 말 */
+  cardText: string;
+}
+
+/**
+ * 2단계 일반 조건.
+ *
+ * 판정에는 쓰지 않는다. 여기 적힌 값이 안 맞는다고 '가지 마세요'가 되지는 않는다.
+ * 헛걸음을 만드는 것은 몸에 맞지 않는 구조이지 예산이 아니기 때문이다.
+ * 대신 중개사가 매물을 고르는 단계에서 쓰도록 요청서에 그대로 실어 보낸다.
+ */
+export interface GeneralTerms {
+  /**
+   * 찾는 동네.
+   *
+   * 중개사가 매물을 고를 때 가장 먼저 보는 조건인데 처음 설계에서 빠져 있었다.
+   * 자유롭게 적게 둔다 — '익산시 신동'처럼 행정동으로 적는 사람도 있고
+   * '원광대 근처'처럼 아는 곳을 기준으로 적는 사람도 있다.
+   */
+  area: string;
+  /** 보증금 (만원) */
+  depositMan: number | null;
+  /** 월세 (만원) */
+  rentMan: number | null;
+  rooms: 'one' | 'two' | null;
+  floorPref: 'any' | 'low' | 'high' | null;
+  /** 걸어서 갈 수 있으면 좋은 곳 */
+  near: string[];
+}
+
+export const emptyTerms = (): GeneralTerms => ({
+  area: '',
+  depositMan: null,
+  rentMan: null,
+  rooms: null,
+  floorPref: null,
+  near: [],
+});
+
+export interface UserProfile {
+  mobility: MobilityId;
+  contact: ContactId;
+  terms: GeneralTerms;
+  /** 이동 방법에서 규칙으로 도출한 조건들. 사용자가 직접 고르지 않는다. */
+  requirements: Requirement[];
+  updatedAt: string;
+}
+
+/**
+ * 매물의 접근성 사실.
+ *
+ * null 은 '모름'이며 절대 추측으로 채우지 않는다.
+ * (특강: AI가 확실하지 않으면 "모르겠습니다·확인이 필요합니다"라고 말할 수 있어야 한다)
+ *
+ * 중개사는 줄자를 들고 다닌다. 그래서 있다·없다가 아니라 잰 숫자를 받는다.
+ * 숫자를 받으면 판정이 3단계로 갈리고 '언제 누가 쟀는지'가 근거로 남는다.
+ */
+export interface PropertyFacts {
+  doorWidthCm: number | null;
+  /** ① 중앙현관문 앞 */
+  outStepCount: number | null;
+  outRamp: boolean | null;
+  /** ② 중앙현관 들어가서 1층 집 앞까지 (반계단) */
+  inStepCount: number | null;
+  bathroomSillCm: number | null;
+  bathroomDoorCm: number | null;
+  hasElevator: boolean | null;
+  floor: number | null;
+  /** 판정에는 쓰지 않는 참고 정보 */
+  parking: boolean | null;
+}
+
+export const emptyFacts = (): PropertyFacts => ({
+  doorWidthCm: null,
+  outStepCount: null,
+  outRamp: null,
+  inStepCount: null,
+  bathroomSillCm: null,
+  bathroomDoorCm: null,
+  hasElevator: null,
+  floor: null,
+  parking: null,
+});
+
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  /** 중개사가 실측을 마친 시각. 판정 카드에 근거로 함께 보여준다. */
+  checkedAt: string | null;
+  /**
+   * 중개사가 글로 덧붙이는 매물 설명.
+   *
+   * 우리에게는 매물 데이터베이스가 없다. 실제 중개사는 공실 목록을 사진으로 보내거나
+   * 글로 적어 준다. 재서 넣는 숫자만으로 담기지 않는 것들 — 채광, 관리비, 입주 가능일 —
+   * 을 여기에 그대로 적게 둔다. 판정에는 쓰지 않는다.
+   */
+  memo: string;
+  facts: PropertyFacts;
+}
+
+/** 사용자가 중개사에게 보낸 요청서 */
+export interface RequestCard {
+  id: string;
+  userName: string;
+  mobility: MobilityId;
+  contact: ContactId;
+  terms: GeneralTerms;
+  requirements: Requirement[];
+  sentAt: string;
+  /** 중개사가 붙인 매물 후보 */
+  propertyIds: string[];
+}
+
+/** 통화 녹음에서 뽑아낸 한 항목. 근거 구간을 반드시 함께 남긴다. */
+export interface CallExtraction {
+  key: FactKey;
+  label: string;
+  /**
+   * true = 사용자 조건에 걸리지 않는 쪽(계단 없음, 턱 없음, 폭 충분함).
+   *
+   * 이 불리언은 항목마다 '있음'을 뜻하기도 하고 '없음'을 뜻하기도 해서
+   * 화면에서 그대로 읽으면 뜻이 뒤집힌다. 그래서 화면에 쓸 말은
+   * stateLabel 로 함께 내려보내고, UI 는 이 불리언을 해석하지 않는다.
+   */
+  value: boolean | null;
+  /** 화면에 그대로 찍는 말. 예: '없음', '있음', '넘음'. 확인 필요면 null */
+  stateLabel: string | null;
+  quote: string | null;
+  atSecond: number | null;
+  confidence: number;
+}

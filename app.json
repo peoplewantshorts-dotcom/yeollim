@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "열림",
+    "slug": "yeollim",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "yeollim",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.badakbuteo.yeollim"
+    },
+    "android": {
+      "package": "org.badakbuteo.yeollim",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#EEECF3"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "backgroundColor": "#EEECF3"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "말로 답하시려면 마이크를 쓸 수 있어야 해요.",
+          "speechRecognitionPermission": "말씀하신 내용을 글자로 바꾸는 데에만 씁니다.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {}
+    },
+    "experiments": {
+      "baseUrl": "/yeollim/"
+    }
+  }
+}

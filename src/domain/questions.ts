@@ -1,0 +1,222 @@
+import type { VoiceChoice } from './voiceMatch';
+import type { ContactId, GeneralTerms, MobilityId, Requirement } from './types';
+
+/**
+ * 프로필 문항.
+ *
+ * 설계 원칙 — 사용자에게는 '본인이 확실히 아는 사실'만 묻는다.
+ *
+ * 처음에는 "문턱이 있으면 걸리세요?" "미끄러우면 위험하세요?" 처럼
+ * 결과를 되물었다. 그건 아픈 사람에게 아프냐고 묻는 것과 같아서
+ * 답이 정해져 있거나 본인이 객관적으로 판단할 수 없다.
+ *
+ * 그래서 묻는 것을 '쓰는 것'과 '편한 것' 둘로만 좁혔다.
+ * 집이 갖춰야 할 조건은 아래 deriveRequirements 가 문헌 근거대로 자동으로 붙인다.
+ * 이 구조는 Housing Enabler(Iwarsson 1999)와 같다 — ① 기능 평가 ② 환경 평가
+ * ③ 둘의 대조는 미리 정해진 규칙이 하고, 당사자에게 되묻지 않는다.
+ */
+
+export interface Choice {
+  id: string;
+  /** 화면에 보이는 말 */
+  label: string;
+}
+
+/**
+ * 선택지에 붙는 그림은 화면 쪽에서 붙인다.
+ * 도메인이 자산 파일을 들고 있으면 판정 규칙만 따로 떼어 시험할 수 없다.
+ */
+
+export interface ProfileQuestion {
+  id: 'wheelchair' | 'walkAid' | 'contact';
+  title: string;
+  /** 제목 아래 작은 글씨 */
+  hint?: string;
+  choices: Choice[];
+}
+
+export const WHEELCHAIR_Q: ProfileQuestion = {
+  id: 'wheelchair',
+  title: '혹시 휠체어를 타시나요?',
+  choices: [
+    { id: 'power', label: '전동휠체어를 타요' },
+    { id: 'manual', label: '수동휠체어를 타요' },
+    { id: 'no', label: '타지 않아요' },
+  ],
+};
+
+export const WALK_AID_Q: ProfileQuestion = {
+  id: 'walkAid',
+  title: '혹시 지팡이나 목발을 사용하시나요?',
+  choices: [
+    { id: 'cane', label: '지팡이를 사용해요' },
+    { id: 'crutch', label: '목발을 사용해요' },
+    { id: 'walker', label: '보행기를 사용해요' },
+    { id: 'none', label: '아니요' },
+  ],
+};
+
+export const CONTACT_Q: ProfileQuestion = {
+  id: 'contact',
+  title: '중개사와 어떻게 연락하는 게 편하세요?',
+  choices: [
+    { id: 'text', label: '글로 받는 게 편해요' },
+    { id: 'phone', label: '전화통화도 괜찮아요' },
+  ],
+};
+
+export const MOBILITY_LABEL: Record<MobilityId, string> = {
+  power: '전동휠체어',
+  manual: '수동휠체어',
+  cane: '지팡이',
+  crutch: '목발',
+  walker: '보행기',
+  none: '보조기구 없이',
+};
+
+/** 요청서 머리말에 그대로 들어가는 문장 */
+export const MOBILITY_SENTENCE: Record<MobilityId, string> = {
+  power: '전동휠체어를 타고 다닙니다',
+  manual: '수동휠체어를 타고 다닙니다',
+  cane: '지팡이를 짚고 다닙니다',
+  crutch: '목발을 짚고 다닙니다',
+  walker: '보행기를 밀고 다닙니다',
+  none: '보조기구 없이 걸어 다닙니다',
+};
+
+/**
+ * 프로필 화면 맨 아래에서 고른 것을 되짚어 주는 한 줄.
+ *
+ * 요청서용 문장을 그대로 쓰면 두 가지가 어긋난다. 말투가 '~합니다'라 앱이 사용자에게
+ * 건네는 말로는 딱딱하고, 문장이 길어 마지막 글자 하나만 다음 줄로 떨어진다.
+ * 한 줄에 들어가는 길이로 따로 쓴다.
+ */
+export const MOBILITY_ECHO: Record<MobilityId, string> = {
+  power: '전동휠체어에 맞춰 찾아드릴게요',
+  manual: '수동휠체어에 맞춰 찾아드릴게요',
+  cane: '지팡이에 맞춰 찾아드릴게요',
+  crutch: '목발에 맞춰 찾아드릴게요',
+  walker: '보행기에 맞춰 찾아드릴게요',
+  none: '말씀하신 대로 찾아드릴게요',
+};
+
+export const CONTACT_SENTENCE: Record<ContactId, string> = {
+  text: '전화가 어려우십니다. 문자로 연락 주세요',
+  phone: '전화통화도 괜찮습니다',
+};
+
+const WHEELED: MobilityId[] = ['power', 'manual'];
+const WALKING_AID: MobilityId[] = ['cane', 'crutch', 'walker'];
+
+const req = (
+  key: Requirement['key'],
+  threshold: number | null,
+  cardText: string,
+): Requirement => ({ key, threshold, priority: 'must', cardText });
+
+/**
+ * 이동 방법에서 집이 갖춰야 할 조건을 도출한다.
+ *
+ * 근거
+ *  - 문 폭 90cm : 장애물 없는 생활환경(BF) 인증심사기준 「출입구 유효폭 0.9m 이상」
+ *  - 문턱 0cm   : BF 「출입구 바닥에 문턱이나 단차가 없을 것」
+ *  - 문턱 2.5cm : 무장애 주택설계에 관한 국내외 국가표준의 비교 연구 「2~2.5cm 이하」
+ *  - 화장실 문 80cm : 같은 연구의 「출입문 폭 0.8~0.95m」 가운데 낮은 값.
+ *                     현관문에 BF 기준 0.9m 를 적용하면서 실내문까지 같은 값을 요구하면
+ *                     남는 매물이 없다. 휠체어가 실제로 지나갈 수 있는 하한으로 잡았다.
+ *  - 계단 두 곳 : 중개 실무. 승강기가 있어도 중앙현관 안쪽 반계단이 막으면 못 들어간다.
+ *                 그래서 ①현관 앞과 ②현관 안을 따로 확인한다.
+ */
+export function deriveRequirements(mobility: MobilityId): Requirement[] {
+  if (WHEELED.includes(mobility)) {
+    return [
+      req('doorWidth', 90, '현관문 폭 90cm 이상'),
+      req('outStep', 0, '중앙현관 앞에 계단 없음'),
+      req('inStep', 0, '중앙현관 안에 계단 없음'),
+      req('bathroomSill', 0, '화장실 문턱 없음'),
+      req('bathroomDoor', 80, '화장실 문 폭 80cm 이상'),
+      req('elevator', null, '2층 이상이면 승강기'),
+    ];
+  }
+  if (WALKING_AID.includes(mobility)) {
+    return [
+      req('outStep', 3, '중앙현관 앞 계단 3칸까지'),
+      req('inStep', 3, '중앙현관 안 계단 3칸까지'),
+      req('bathroomSill', 2.5, '화장실 문턱 2.5cm 이하'),
+    ];
+  }
+  return [];
+}
+
+/** 걸어서 갈 수 있으면 좋은 곳 */
+export const NEAR_OPTIONS: { id: string; label: string }[] = [
+  { id: 'stop', label: '버스나 지하철 정류장' },
+  { id: 'store', label: '편의점이나 마트' },
+  { id: 'hospital', label: '병원' },
+];
+
+const NEAR_LABEL: Record<string, string> = Object.fromEntries(
+  NEAR_OPTIONS.map((o) => [o.id, o.label]),
+);
+
+/**
+ * 일반 조건을 요청서에 실을 문장으로 바꾼다.
+ *
+ * 비워 둔 항목은 줄 자체를 만들지 않는다. '보증금 미정' 같은 줄을 넣으면
+ * 중개사가 읽어야 할 줄만 늘고 얻는 정보는 없다.
+ */
+export function termLines(t: GeneralTerms | undefined | null): string[] {
+  // 예전 구조로 저장된 값이 넘어오면 이 항목이 아예 없다. 화면이 죽는 것보다
+  // 일반 조건 줄이 비는 편이 낫다.
+  if (!t) return [];
+  const out: string[] = [];
+  if (t.area.trim()) out.push(`${t.area.trim()}에서 찾고 있어요`);
+  const money = [
+    t.depositMan !== null ? `보증금 ${t.depositMan}만원` : '',
+    t.rentMan !== null ? `월세 ${t.rentMan}만원` : '',
+  ].filter(Boolean);
+  if (money.length) out.push(money.join(' · '));
+  if (t.rooms === 'one') out.push('방 한 개면 돼요');
+  if (t.rooms === 'two') out.push('방 두 개 이상이면 좋겠어요');
+  if (t.floorPref === 'low') out.push('낮은 층이 좋아요');
+  if (t.floorPref === 'high') out.push('높은 층이 좋아요');
+  if (t.near.length) {
+    out.push(`걸어서 갈 수 있으면 좋은 곳 — ${t.near.map((id) => NEAR_LABEL[id] ?? id).join(', ')}`);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * 말로 답할 때 쓰는 어휘
+ *
+ * 화면에 적힌 말 그대로 또박또박 말하는 사람은 없다. "전동휠체어를 타요"라고
+ * 쓰여 있어도 실제로는 "전동", "전동차", "휠체어 타요"라고 한다.
+ * 게다가 구음장애가 있으면 인식기가 받아 적은 글자부터 흔들린다.
+ *
+ * 그래서 선택지마다 그 사람이 실제로 할 법한 말을 여러 개 적어 둔다.
+ * 이 목록은 맞춰보는 데도 쓰이고, 인식기에 미리 귀띔하는 데도 쓰인다.
+ * ------------------------------------------------------------------ */
+const VOICE_WORDS: Record<string, string[]> = {
+  // '휠체어 타요'는 전동인지 수동인지 알 수 없다. 양쪽에 함께 두어
+  // 한쪽으로 단정하지 않고 어느 쪽인지 되묻게 한다.
+  power: ['전동', '전동 휠체어', '전동차', '휠체어 타요'],
+  manual: ['수동', '수동 휠체어', '손으로 미는 휠체어', '휠체어 타요'],
+  no: ['안 타요', '타지 않아요', '아니요', '휠체어 안 타요'],
+
+  cane: ['지팡이', '지팡이 짚어요', '단장', '지팡이 써요'],
+  crutch: ['목발', '목발 짚어요', '크러치'],
+  walker: ['보행기', '워커', '보행 보조기', '밀고 다녀요'],
+  none: ['아니요', '안 써요', '아무것도 안 써요', '그냥 걸어요'],
+
+  text: ['글로', '문자로', '글이 편해요', '문자가 편해요', '전화 말고'],
+  phone: ['전화', '전화도 괜찮아요', '통화', '전화 괜찮아요'],
+};
+
+/** 이 질문을 말로 답할 때 쓸 후보 목록 */
+export function voiceChoicesFor(choices: Choice[]): VoiceChoice[] {
+  return choices.map((c) => ({
+    id: c.id,
+    label: c.label,
+    keywords: VOICE_WORDS[c.id] ?? [],
+  }));
+}

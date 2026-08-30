@@ -1,0 +1,379 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  AppBar,
+  Card,
+  GhostButton,
+  H1,
+  PrimaryButton,
+  Screen,
+  Sub,
+  useSteadyPress,
+} from '../../src/components/ui';
+import type { PropertyFacts } from '../../src/domain/types';
+import { useStore } from '../../src/store';
+import { color, family, font, HIT, radius, space, TAP_BIG, TAP_GAP } from '../../src/theme';
+
+/**
+ * 매물 실측 입력 (중개사 화면).
+ *
+ * 있다·없다가 아니라 잰 숫자를 받는다. 중개사는 줄자를 들고 다니고,
+ * 30초면 끝나는 일이다. 숫자를 받으면 판정이 3단계로 정확히 갈리고
+ * '언제 누가 쟀는지'가 판정 카드에 근거로 남는다.
+ *
+ * 항목을 다섯에서 늘리지 않으려 애썼지만 계단만은 두 곳으로 나눴다.
+ * 승강기가 있어도 중앙현관 안쪽 반계단이 막으면 휠체어는 들어가지 못한다.
+ * 한 항목으로 뭉치면 '승강기 있음 → 갈 수 있어요'라는 오판정이 나온다.
+ *
+ * 비워 두면 '모름'이다. 모르는 것을 0으로 적게 만들면 그 순간 데이터가 거짓이 된다.
+ */
+export default function Checklist() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { properties, updateFacts, updateMemo } = useStore();
+  const property = properties.find((p) => p.id === id);
+
+  const [draft, setDraft] = useState<PropertyFacts | null>(property?.facts ?? null);
+  const [memo, setMemo] = useState(property?.memo ?? '');
+
+  // 다른 화면에서 이 매물의 값이 바뀌면(통화 분석 저장 등) 입력칸도 따라간다.
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (property && !loaded.current) {
+      setDraft(property.facts);
+      loaded.current = true;
+    }
+  }, [property]);
+
+  if (!property || !draft) {
+    return (
+      <Screen>
+        <AppBar title="매물 확인" badge="중개사" />
+        <H1>매물을 찾을 수 없어요</H1>
+        <View style={{ height: space.xl }} />
+        <PrimaryButton label="목록으로" onPress={() => router.replace('/agent')} />
+      </Screen>
+    );
+  }
+
+  const set = <K extends keyof PropertyFacts>(key: K, value: PropertyFacts[K]) =>
+    setDraft((d) => (d ? { ...d, [key]: value } : d));
+
+  const filled = Object.values(draft).filter((v) => v !== null).length;
+
+  const save = () => {
+    updateFacts(property.id, draft);
+    updateMemo(property.id, memo);
+    router.replace('/agent');
+  };
+
+  return (
+    <Screen
+      scrollHint="아래로 내리면서 재신 값을 넣어주세요"
+      footer={
+        <>
+          <PrimaryButton label="저장하기" onPress={save} />
+          <GhostButton
+            label="통화 녹음으로 채우기"
+            onPress={() =>
+              router.push({ pathname: '/agent/call', params: { id: property.id } })
+            }
+          />
+        </>
+      }
+    >
+      <AppBar title="매물 확인" badge="중개사" />
+
+      <H1>{property.name}</H1>
+      <Sub>{filled}개 채우셨어요. 모르시는 칸은 비워두시면 됩니다.</Sub>
+
+      {/* ① ② 계단 두 곳 — 한 장의 그림으로 어디를 보는지 알려준다 */}
+      <Card>
+        <Text style={s.section}>계단</Text>
+        <Image source={require('../../assets/fig-entry.jpg')} style={s.fig} resizeMode="contain" />
+        <Text style={s.figCap}>
+          ① 중앙현관문 앞과 ② 현관 들어가서 1층 집 앞, 두 곳을 따로 봐주세요
+        </Text>
+
+        <Num
+          label="① 중앙현관문 앞 계단"
+          unit="칸"
+          value={draft.outStepCount}
+          onChange={(v) => set('outStepCount', v)}
+        />
+        <Toggle
+          label="중앙현관문 앞에 경사로가 있다"
+          value={draft.outRamp}
+          onChange={(v) => set('outRamp', v)}
+        />
+        <Num
+          label="② 현관 들어가서 1층 집 앞까지"
+          hint="흔히 반계단이라고 하는 그것"
+          unit="칸"
+          value={draft.inStepCount}
+          onChange={(v) => set('inStepCount', v)}
+        />
+      </Card>
+
+      {/* ③ 현관문 폭 */}
+      <Card>
+        <Text style={s.section}>현관문 폭</Text>
+        <Image
+          source={require('../../assets/fig-doorwidth.jpg')}
+          style={s.fig}
+          resizeMode="contain"
+        />
+        <Text style={s.figCap}>문 활짝 열고 문틀 안쪽에서 안쪽까지</Text>
+        <Num
+          label="현관문 폭"
+          unit="cm"
+          value={draft.doorWidthCm}
+          onChange={(v) => set('doorWidthCm', v)}
+        />
+      </Card>
+
+      {/* ④ 화장실 문턱 */}
+      <Card>
+        <Text style={s.section}>화장실</Text>
+        <Image
+          source={require('../../assets/fig-threshold.jpg')}
+          style={s.fig}
+          resizeMode="contain"
+        />
+        <Text style={s.figCap}>턱의 옆면 높이. 턱이 없으면 0을 넣어주세요</Text>
+        <Num
+          label="화장실 문턱 높이"
+          unit="cm"
+          value={draft.bathroomSillCm}
+          onChange={(v) => set('bathroomSillCm', v)}
+        />
+        <Num
+          label="화장실 문 폭"
+          hint="현관을 넘어도 여기서 막히는 집이 많아요"
+          unit="cm"
+          value={draft.bathroomDoorCm}
+          onChange={(v) => set('bathroomDoorCm', v)}
+        />
+      </Card>
+
+      {/* ⑤ 승강기와 층 */}
+      <Card>
+        <Text style={s.section}>승강기와 층</Text>
+        <Num label="이 집은" unit="층" value={draft.floor} onChange={(v) => set('floor', v)} />
+        <Toggle
+          label="승강기가 있다"
+          value={draft.hasElevator}
+          onChange={(v) => set('hasElevator', v)}
+        />
+      </Card>
+
+      {/* 참고 정보. 판정에는 쓰지 않는다. */}
+      <Card>
+        <Text style={s.section}>
+          주차 <Text style={s.optional}>선택</Text>
+        </Text>
+        <Toggle label="주차 자리가 있다" value={draft.parking} onChange={(v) => set('parking', v)} />
+      </Card>
+
+      {/*
+        숫자로 담기지 않는 것들이 있다. 채광, 관리비, 입주 가능일 같은 것.
+        실제 중개사는 이런 것을 글로 적어 보낸다. 그대로 적을 자리를 둔다.
+      */}
+      <Card>
+        <Text style={s.section}>
+          덧붙일 말 <Text style={s.optional}>선택</Text>
+        </Text>
+        <Text style={s.figCap}>채광, 관리비, 입주 가능일처럼 재서 담기지 않는 것들</Text>
+        <TextInput
+          value={memo}
+          onChangeText={setMemo}
+          multiline
+          placeholder="예: 남향이라 낮에 밝습니다. 관리비 5만원 별도."
+          placeholderTextColor={color.textMuted}
+          style={s.memo}
+          accessibilityLabel="매물에 덧붙일 말을 적어주세요. 비워두셔도 됩니다."
+        />
+      </Card>
+    </Screen>
+  );
+}
+
+/** 숫자 한 칸. 비우면 '모름'으로 남는다. */
+function Num({
+  label,
+  hint,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  unit: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  const [text, setText] = useState(value === null ? '' : String(value));
+
+  const commit = (raw: string) => {
+    setText(raw);
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    if (cleaned === '') {
+      onChange(null);
+      return;
+    }
+    const n = Number(cleaned);
+    onChange(Number.isFinite(n) ? n : null);
+  };
+
+  return (
+    <View style={s.row}>
+      <View style={s.rowText}>
+        <Text style={s.rowLabel}>{label}</Text>
+        {hint ? <Text style={s.rowHint}>{hint}</Text> : null}
+      </View>
+      <View style={s.inputWrap}>
+        <TextInput
+          value={text}
+          onChangeText={commit}
+          keyboardType="decimal-pad"
+          placeholder="—"
+          placeholderTextColor={color.textMuted}
+          style={s.input}
+          accessibilityLabel={`${label}. 숫자로 넣어주세요. 단위는 ${unit}. 모르시면 비워두세요.`}
+        />
+        <Text style={s.unit}>{unit}</Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * 있다·없다·모름 세 가지.
+ *
+ * 체크박스 하나로 두면 '안 누른 것'과 '없다고 답한 것'이 구분되지 않는다.
+ * 모르는 것을 없음으로 저장하지 않으려면 세 번째 칸이 반드시 있어야 한다.
+ */
+function Toggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean | null;
+  onChange: (v: boolean | null) => void;
+}) {
+  const pick = useSteadyPress((v: boolean | null) => onChange(v));
+  const opts: { v: boolean | null; text: string }[] = [
+    { v: true, text: '있음' },
+    { v: false, text: '없음' },
+    { v: null, text: '모름' },
+  ];
+  return (
+    <View style={s.toggleBlock}>
+      <Text style={s.rowLabel}>{label}</Text>
+      <View style={s.toggleRow} accessibilityRole="radiogroup" accessibilityLabel={label}>
+        {opts.map((o) => {
+          const on = value === o.v;
+          return (
+            <Pressable
+              key={o.text}
+              onPress={() => pick(o.v)}
+              style={[s.toggle, on && s.toggleOn]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on, selected: on }}
+              aria-checked={on}
+              accessibilityLabel={`${label} ${o.text}`}
+            >
+              <Text style={[s.toggleText, on && s.toggleTextOn]}>{o.text}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  section: { fontSize: font.body, fontFamily: family.extrabold, color: color.text },
+  optional: { fontSize: font.caption, fontFamily: family.regular, color: color.textMuted },
+
+  fig: {
+    width: '100%',
+    height: 170,
+    marginTop: space.md,
+    borderRadius: radius.button,
+    backgroundColor: color.bg,
+  },
+  figCap: {
+    marginTop: space.sm,
+    fontSize: font.caption,
+    lineHeight: font.caption * 1.5,
+    color: color.textMuted,
+    fontFamily: family.regular,
+  },
+
+  row: {
+    marginTop: space.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.lg,
+  },
+  rowText: { flex: 1 },
+  rowLabel: { fontSize: font.label, fontFamily: family.bold, color: color.text },
+  rowHint: {
+    marginTop: 2,
+    fontSize: font.caption,
+    color: color.textMuted,
+    fontFamily: family.regular,
+  },
+
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  input: {
+    width: 92,
+    height: TAP_BIG,
+    borderRadius: radius.button,
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surfaceSoft,
+    paddingHorizontal: space.md,
+    textAlign: 'center',
+    fontSize: font.h2,
+    fontFamily: family.bold,
+    color: color.text,
+  },
+  unit: { fontSize: font.label, fontFamily: family.semibold, color: color.textSub, width: 28 },
+
+  memo: {
+    marginTop: space.md,
+    minHeight: 110,
+    borderRadius: radius.button,
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surfaceSoft,
+    padding: space.lg,
+    fontSize: font.label,
+    lineHeight: font.label * 1.55,
+    fontFamily: family.regular,
+    color: color.text,
+    textAlignVertical: 'top',
+  },
+
+  toggleBlock: { marginTop: space.xl },
+  // 표적이 커도 서로 붙어 있으면 옆 것을 누르게 된다. 간격도 기준(16)을 지킨다.
+  toggleRow: { marginTop: space.md, flexDirection: 'row', gap: TAP_GAP },
+  toggle: {
+    flex: 1,
+    minHeight: HIT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.button,
+    borderWidth: 2,
+    borderColor: color.border,
+    backgroundColor: color.surface,
+  },
+  toggleOn: { borderColor: color.primary, backgroundColor: color.primarySoft },
+  toggleText: { fontSize: font.label, fontFamily: family.bold, color: color.textSub },
+  toggleTextOn: { color: color.onPrimarySoft },
+});
