@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PrimaryButton, SpeakLink, useSteadyPress } from './ui';
 import { color, family, radius, space } from '../theme';
 
-const INTRO = '열림. 들어갈 수 있는 집인지, 가기 전에 알려드려요.';
+const INTRO = '열림. 생활할 수 있는 집인지, 가기 전에 알려드려요.';
 
 /**
  * 시작 화면.
@@ -60,7 +60,7 @@ export function Cover() {
 
         <View style={s.copy}>
           <Text style={s.headline}>
-            들어갈 수 있는 집인지{'\n'}
+            생활할 수 있는 집인지{'\n'}
             <Text style={s.headlineStrong}>가기 전에</Text> 알려드려요
           </Text>
           <SpeakLink text={INTRO} label="소리로 들으실 수 있어요" />
