@@ -12,7 +12,7 @@ import {
   type VoiceMatch,
 } from '../domain/voiceMatch';
 import { GhostButton, PrimaryButton, useSteadyPress } from './ui';
-import { color, family, font, HIT, radius, space } from '../theme';
+import { color, family, font, HIT, radius, space, TAP_BIG } from '../theme';
 
 /**
  * 말로 답하기.
@@ -247,8 +247,19 @@ export function VoiceAnswer({
   );
 }
 
-/** 질문 카드에 붙는 '말로 답하기' 버튼 */
-export function VoiceButton({ onPress }: { onPress: () => void }) {
+/**
+ * 질문 카드에 붙는 말하기 버튼.
+ *
+ * 고르는 질문에서는 '말로 선택하기', 적어 넣는 칸에서는 '말로 넣기'로 부른다.
+ * 무엇을 하는 버튼인지가 이름에 그대로 들어가야 한 번에 알아본다.
+ */
+export function VoiceButton({
+  onPress,
+  label = '말로 선택하기',
+}: {
+  onPress: () => void;
+  label?: string;
+}) {
   const press = useSteadyPress(onPress);
   return (
     <Pressable
@@ -256,10 +267,12 @@ export function VoiceButton({ onPress }: { onPress: () => void }) {
       hitSlop={8}
       style={({ pressed }) => [s.trigger, pressed && s.triggerPressed]}
       accessibilityRole="button"
-      accessibilityLabel="말로 답하기. 버튼을 누르기 어려우시면 말로 고르실 수 있어요."
+      accessibilityLabel={`${label}. 버튼을 누르기 어려우시면 말로 하실 수 있어요.`}
     >
-      <Text style={s.triggerGlyph}>🎙️</Text>
-      <Text style={s.triggerText}>말로 답하기</Text>
+      <View style={s.triggerBadge}>
+        <Text style={s.triggerGlyph}>🎙️</Text>
+      </View>
+      <Text style={s.triggerText}>{label}</Text>
     </Pressable>
   );
 }
@@ -341,22 +354,32 @@ const s = StyleSheet.create({
   gap: { height: space.xxl },
   gapSm: { marginTop: space.md },
 
+  // '소리로 듣기'와 같은 크기·같은 생김새로 맞춘다. 둘은 한 짝이다.
   trigger: {
-    minHeight: HIT,
+    minHeight: TAP_BIG,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    marginTop: space.lg,
-    paddingHorizontal: space.lg,
+    gap: space.md,
+    marginTop: space.md,
+    paddingLeft: space.sm,
+    paddingRight: space.xl,
     borderRadius: radius.chip,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: color.borderStrong,
-    backgroundColor: color.surfaceSoft,
+    backgroundColor: color.surface,
   },
   triggerPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
-  triggerGlyph: { fontSize: font.body },
-  triggerText: { fontSize: font.caption + 1, color: color.primaryText, fontFamily: family.bold },
+  triggerBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: color.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  triggerGlyph: { fontSize: 22 },
+  triggerText: { fontSize: font.label, color: color.primaryText, fontFamily: family.bold },
 });
 
 void ACCEPT;

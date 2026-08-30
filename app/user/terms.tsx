@@ -19,6 +19,8 @@ import {
   DEPOSIT_BANDS,
   NEAR_OPTIONS,
   RENT_BANDS,
+  FLOOR_OPTIONS,
+  ROOM_OPTIONS,
   suggestAreas,
   voiceChoicesFor,
 } from '../../src/domain/questions';
@@ -105,19 +107,6 @@ export default function TermsScreen() {
       />
 
       <Card>
-        <Text style={s.q}>중개사가 어떻게 부르면 될까요?</Text>
-        <Sub>성 한 글자만 적으셔도 돼요</Sub>
-        <TextInput
-          value={terms.name}
-          onChangeText={(v) => set('name', v)}
-          placeholder="예: 김"
-          placeholderTextColor={color.textMuted}
-          style={s.area}
-          accessibilityLabel="중개사가 부를 이름을 넣어주세요. 비워두셔도 됩니다."
-        />
-      </Card>
-
-      <Card>
         <Text style={s.q}>어느 동네에서 찾으세요?</Text>
         <Sub>중개사가 제일 먼저 보는 조건이에요</Sub>
         <TextInput
@@ -135,12 +124,12 @@ export default function TermsScreen() {
         {suggestAreas(terms.area).length > 0 && !NEAR_HIT(terms.area) ? (
           <View style={s.suggest}>
             {suggestAreas(terms.area).map((a) => (
-              <Tag key={a} label={a} on={false} onPress={() => set('area', a)} />
+              <Tag key={a} wide label={a} on={false} onPress={() => set('area', a)} />
             ))}
           </View>
         ) : null}
         <View style={s.actions}>
-          <VoiceButton onPress={() => setSpeaking('area')} />
+          <VoiceButton label="말로 넣기" onPress={() => setSpeaking('area')} />
         </View>
       </Card>
 
@@ -180,18 +169,18 @@ export default function TermsScreen() {
 
       <Card>
         <Text style={s.q}>방은 몇 개면 좋으세요?</Text>
-        <PickList label="방은 몇 개면 좋으세요?">
-          <PickCard
-            label="한 개면 돼요"
-            selected={terms.rooms === 'one'}
-            onPress={() => set('rooms', terms.rooms === 'one' ? null : 'one')}
-          />
-          <PickCard
-            label="두 개 이상이면 좋겠어요"
-            selected={terms.rooms === 'two'}
-            onPress={() => set('rooms', terms.rooms === 'two' ? null : 'two')}
-          />
-        </PickList>
+        <View style={s.tagRow}>
+          {ROOM_OPTIONS.map((o) => (
+            <Tag
+              key={o.id}
+              label={o.label}
+              on={terms.rooms === o.id}
+              onPress={() =>
+                set('rooms', terms.rooms === o.id ? null : (o.id as GeneralTerms['rooms']))
+              }
+            />
+          ))}
+        </View>
         <View style={s.actions}>
           <VoiceButton onPress={() => setSpeaking('rooms')} />
         </View>
@@ -199,23 +188,18 @@ export default function TermsScreen() {
 
       <Card>
         <Text style={s.q}>몇 층이 좋으세요?</Text>
-        <PickList label="몇 층이 좋으세요?">
-          <PickCard
-            label="낮은 층이 좋아요"
-            selected={terms.floorPref === 'low'}
-            onPress={() => set('floorPref', terms.floorPref === 'low' ? null : 'low')}
-          />
-          <PickCard
-            label="높은 층이 좋아요"
-            selected={terms.floorPref === 'high'}
-            onPress={() => set('floorPref', terms.floorPref === 'high' ? null : 'high')}
-          />
-          <PickCard
-            label="상관없어요"
-            selected={terms.floorPref === 'any'}
-            onPress={() => set('floorPref', terms.floorPref === 'any' ? null : 'any')}
-          />
-        </PickList>
+        <View style={s.tagRow}>
+          {FLOOR_OPTIONS.map((o) => (
+            <Tag
+              key={o.id}
+              label={o.label}
+              on={terms.floorPref === o.id}
+              onPress={() =>
+                set('floorPref', terms.floorPref === o.id ? null : (o.id as GeneralTerms['floorPref']))
+              }
+            />
+          ))}
+        </View>
         <View style={s.actions}>
           <VoiceButton onPress={() => setSpeaking('floor')} />
         </View>
@@ -229,6 +213,7 @@ export default function TermsScreen() {
             <Tag
               key={o.id}
               label={o.label}
+              wide
               on={terms.near.includes(o.id)}
               onPress={() => toggleNear(o.id)}
             />
@@ -251,16 +236,9 @@ export default function TermsScreen() {
               : speaking === 'rent'
                 ? voiceChoicesFor(RENT_BANDS)
                 : speaking === 'rooms'
-                  ? voiceChoicesFor([
-                      { id: 'one', label: '한 개면 돼요' },
-                      { id: 'two', label: '두 개 이상이면 좋겠어요' },
-                    ])
+                  ? voiceChoicesFor(ROOM_OPTIONS)
                   : speaking === 'floor'
-                    ? voiceChoicesFor([
-                        { id: 'low', label: '낮은 층이 좋아요' },
-                        { id: 'high', label: '높은 층이 좋아요' },
-                        { id: 'any', label: '상관없어요' },
-                      ])
+                    ? voiceChoicesFor(FLOOR_OPTIONS)
                     : voiceChoicesFor(NEAR_OPTIONS)
           }
           onPick={(id) => {
@@ -278,12 +256,23 @@ export default function TermsScreen() {
   );
 }
 
-function Tag({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+function Tag({
+  label,
+  on,
+  onPress,
+  wide,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+  /** 한 줄을 통째로 쓰는 항목. 글이 길어 두 칸으로 나누면 줄이 접힌다. */
+  wide?: boolean;
+}) {
   const press = useSteadyPress(onPress);
   return (
     <Pressable
       onPress={press}
-      style={[s.tag, on && s.tagOn]}
+      style={[s.tag, wide && s.tagWide, on && s.tagOn]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: on }}
       aria-checked={on}
@@ -314,18 +303,27 @@ const s = StyleSheet.create({
 
   suggest: { marginTop: space.md, flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
 
-  tagRow: { marginTop: space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: TAP_GAP },
+  tagRow: { marginTop: space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   // 구간 버튼은 자주, 많이 누른다. 칩 하한(56)보다 한 단계 크게 잡았다.
+  /*
+   * 금액 구간은 두 칸씩 나란히 놓는다.
+   * 글자 길이대로 흘려보내면 줄마다 개수가 달라져 눈이 어디를 봐야 할지 못 찾는다.
+   * 같은 폭으로 맞추면 훑기만 해도 몇 개가 있는지 보인다.
+   */
   tag: {
+    flexGrow: 1,
+    flexBasis: '44%',
     minHeight: TAP_BIG,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: space.xl,
+    paddingHorizontal: space.lg,
     borderRadius: radius.chip,
     borderWidth: 2,
     borderColor: color.border,
     backgroundColor: color.surface,
   },
+  tagWide: { flexBasis: '100%', alignItems: 'flex-start', paddingHorizontal: space.xl },
   tagOn: { borderColor: color.primary, backgroundColor: color.primarySoft },
-  tagText: { fontSize: font.label, fontFamily: family.bold, color: color.textSub },
+  tagText: { fontSize: font.label, fontFamily: family.bold, color: color.textSub, textAlign: 'center' },
   tagTextOn: { color: color.onPrimarySoft },
 });

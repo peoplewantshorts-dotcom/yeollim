@@ -18,9 +18,8 @@ import {
   CONTACT_Q,
   deriveRequirements,
   MOBILITY_ECHO,
+  MOBILITY_Q,
   voiceChoicesFor,
-  WALK_AID_Q,
-  WHEELCHAIR_Q,
   type ProfileQuestion,
 } from '../../src/domain/questions';
 import { emptyTerms, type ContactId, type MobilityId } from '../../src/domain/types';
@@ -62,31 +61,14 @@ export default function ProfileScreen() {
   const { profile, saveProfile } = useStore();
 
   // 저장된 프로필에서 화면 상태를 되살린다.
-  const [wheelchair, setWheelchair] = useState<string | null>(() => {
-    const m = profile?.mobility;
-    if (m === 'power' || m === 'manual') return m;
-    return m ? 'no' : null;
-  });
-  const [walkAid, setWalkAid] = useState<string | null>(() => {
-    const m = profile?.mobility;
-    return m === 'cane' || m === 'crutch' || m === 'walker' || m === 'none' ? m : null;
-  });
+  const [mobility, setMobility] = useState<MobilityId | null>(() => profile?.mobility ?? null);
   const [contact, setContact] = useState<string | null>(() => profile?.contact ?? null);
 
   // 지금 말로 답하는 중인 질문. null 이면 열려 있지 않다.
   const [speaking, setSpeaking] = useState<ProfileQuestion['id'] | null>(null);
 
-  const needsWalkAid = wheelchair === 'no';
-
-  const mobility: MobilityId | null = useMemo(() => {
-    if (wheelchair === 'power' || wheelchair === 'manual') return wheelchair;
-    if (wheelchair === 'no' && walkAid) return walkAid as MobilityId;
-    return null;
-  }, [wheelchair, walkAid]);
-
-  const total = needsWalkAid ? 3 : 2;
-  const done =
-    (wheelchair ? 1 : 0) + (needsWalkAid && walkAid ? 1 : 0) + (contact ? 1 : 0);
+  const total = 2;
+  const done = (mobility ? 1 : 0) + (contact ? 1 : 0);
   const complete = mobility !== null && contact !== null;
 
   const submit = () => {
@@ -127,50 +109,24 @@ export default function ProfileScreen() {
       />
 
       <Card>
-        <Text style={s.qTitle}>{WHEELCHAIR_Q.title}</Text>
-        <PickList label={WHEELCHAIR_Q.title}>
-          {WHEELCHAIR_Q.choices.map((c) => (
+        <Text style={s.qTitle}>{MOBILITY_Q.title}</Text>
+        <PickList label={MOBILITY_Q.title}>
+          {MOBILITY_Q.choices.map((c) => (
             <PickCard
               key={c.id}
               label={c.label}
               image={AID_IMAGE[c.id]}
-              selected={wheelchair === c.id}
-              onPress={() => {
-                setWheelchair(c.id);
-                // 휠체어를 탄다고 바꾸면 앞서 고른 지팡이 답은 뜻이 없어진다.
-                if (c.id !== 'no') setWalkAid(null);
-              }}
-              a11yLabel={`${WHEELCHAIR_Q.title} ${c.label}`}
+              selected={mobility === c.id}
+              onPress={() => setMobility(c.id as MobilityId)}
+              a11yLabel={`${MOBILITY_Q.title} ${c.label}`}
             />
           ))}
         </PickList>
         <View style={s.actions}>
-          <SpeakLink text={WHEELCHAIR_Q.title} label="들어보기" />
-          <VoiceButton onPress={() => openVoice('wheelchair')} />
+          <SpeakLink text={MOBILITY_Q.title} label="들어보기" />
+          <VoiceButton onPress={() => openVoice('mobility')} />
         </View>
       </Card>
-
-      {needsWalkAid ? (
-        <Card>
-          <Text style={s.qTitle}>{WALK_AID_Q.title}</Text>
-          <PickList label={WALK_AID_Q.title}>
-            {WALK_AID_Q.choices.map((c) => (
-              <PickCard
-                key={c.id}
-                label={c.label}
-                image={AID_IMAGE[c.id]}
-                selected={walkAid === c.id}
-                onPress={() => setWalkAid(c.id)}
-                a11yLabel={`${WALK_AID_Q.title} ${c.label}`}
-              />
-            ))}
-          </PickList>
-          <View style={s.actions}>
-            <SpeakLink text={WALK_AID_Q.title} label="들어보기" />
-            <VoiceButton onPress={() => openVoice('walkAid')} />
-          </View>
-        </Card>
-      ) : null}
 
       <Card>
         <Text style={s.qTitle}>{CONTACT_Q.title}</Text>
@@ -192,38 +148,23 @@ export default function ProfileScreen() {
       </Card>
 
       {mobility ? (
-        <Text style={s.echo}>{MOBILITY_ECHO[mobility]}</Text>
+        <Text style={s.echo}>{MOBILITY_ECHO}</Text>
       ) : null}
 
       {/* 말로 답하기. 탭을 대체하지 않고 나란히 둔다. */}
       {speaking ? (
-        (() => {
-          const q =
-            speaking === 'wheelchair'
-              ? WHEELCHAIR_Q
-              : speaking === 'walkAid'
-                ? WALK_AID_Q
-                : CONTACT_Q;
-          const pick = (id: string) => {
-            if (speaking === 'wheelchair') {
-              setWheelchair(id);
-              if (id !== 'no') setWalkAid(null);
-            } else if (speaking === 'walkAid') {
-              setWalkAid(id);
-            } else {
-              setContact(id);
-            }
-          };
-          return (
-            <VoiceAnswer
-              visible
-              title={q.title}
-              choices={voiceChoicesFor(q.choices)}
-              onPick={pick}
-              onClose={() => setSpeaking(null)}
-            />
-          );
-        })()
+        <VoiceAnswer
+          visible
+          title={speaking === 'mobility' ? MOBILITY_Q.title : CONTACT_Q.title}
+          choices={voiceChoicesFor(
+            speaking === 'mobility' ? MOBILITY_Q.choices : CONTACT_Q.choices,
+          )}
+          onPick={(id) => {
+            if (speaking === 'mobility') setMobility(id as MobilityId);
+            else setContact(id);
+          }}
+          onClose={() => setSpeaking(null)}
+        />
       ) : null}
     </Screen>
   );

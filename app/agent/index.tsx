@@ -29,6 +29,15 @@ import { color, family, font, radius, shadow, space } from '../../src/theme';
  * 중앙현관 앞은 계단 수와 경사로 중 하나만 있어도 판정이 서므로 한 칸으로 본다.
  * 주차는 판정에 쓰지 않아 세지 않는다.
  */
+/** JSX 안에서 줄바꿈을 넣을 때 쓴다. */
+const BR = String.fromCharCode(10);
+
+/** 2026-08-30T… → 8월 30일 */
+function sentOn(iso: string): string {
+  const [, m, d] = iso.slice(0, 10).split('-');
+  return `${Number(m)}월 ${Number(d)}일`;
+}
+
 const SLOTS = 7;
 function filledSlots(f: PropertyFacts): number {
   let n = 0;
@@ -52,7 +61,7 @@ export default function AgentInbox() {
         <AppBar title="받은 의뢰" badge="중개사" />
         <H1>아직 받은 의뢰가 없어요</H1>
         <Sub>
-          요청서가 도착하면 여기에 뜨고, 그때만 앱이 작동해요.{'\n'}
+          요청서가 오면 여기에 뜹니다.{BR}
           평소에는 알림을 보내지 않아요.
         </Sub>
       </Screen>
@@ -72,9 +81,8 @@ export default function AgentInbox() {
       <Sub>줄자로 재신 값을 넣어주시면 됩니다</Sub>
 
       <View style={s.reqBox}>
-        <Text style={s.reqName}>
-          {latest.terms?.name?.trim() ? `${latest.terms.name.trim()} 님 요청서` : '받은 요청서'}
-        </Text>
+        {/* 이름을 받지 않으므로 보낸 날짜로 구분한다 */}
+        <Text style={s.reqName}>{sentOn(latest.sentAt)}에 온 요청서</Text>
         <Text style={s.reqBody}>{MOBILITY_SENTENCE[latest.mobility]}</Text>
         {musts.map((r) => (
           <Text key={r.key} style={s.reqItem}>
@@ -188,18 +196,22 @@ const s = StyleSheet.create({
     fontFamily: family.regular,
   },
 
+  // 요청서 상자와 구분은 되어야 하지만 앱 밖에서 온 것처럼 보이면 안 된다.
+  // 색을 바꾸는 대신 테두리를 둘러 구분한다.
   contactBox: {
     marginTop: space.lg,
-    backgroundColor: color.fixBg,
+    backgroundColor: color.surface,
+    borderWidth: 2,
+    borderColor: color.primary,
     borderRadius: radius.card,
     padding: space.xl,
   },
-  contactHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.fixText },
+  contactHead: { fontSize: font.label, fontFamily: family.extrabold, color: color.primaryText },
   contactBody: {
     marginTop: space.sm,
     fontSize: font.caption + 1,
     lineHeight: (font.caption + 1) * 1.5,
-    color: color.fixText,
+    color: color.textSub,
     fontFamily: family.regular,
   },
   contactPlain: {

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PrimaryButton, SpeakLink, useSteadyPress } from './ui';
 import { color, family, radius, space } from '../theme';
 
-const INTRO = '열림. 생활할 수 있는 집인지, 가기 전에 알려드려요.';
+const INTRO = '열림. 생활할 수 있는 집인지, 확인해서 알려드려요.';
 
 /**
  * 시작 화면.
@@ -24,12 +24,13 @@ const INTRO = '열림. 생활할 수 있는 집인지, 가기 전에 알려드�
  * 명도 대비 문제 자체가 사라진다.
  */
 
-// 사진에서 뽑은 따뜻한 중성색. 이 화면에서만 쓴다.
+// 앱 전체와 같은 보랏빛 계열. 처음에는 사진에서 뽑은 따뜻한 중성색을 썼는데
+// 이 화면만 노랗게 떠서 앱 톤으로 되돌렸다.
 const COVER = {
-  ground: '#FAF6F1',
-  ink: '#241F1A',
-  inkSoft: '#6E645B',
-  cardEdge: '#EDE4D9',
+  ground: '#FDFCFF',
+  ink: '#1B1B2F',
+  inkSoft: '#63637C',
+  cardEdge: '#E6E2FB',
 };
 
 export function Cover() {
@@ -61,7 +62,7 @@ export function Cover() {
         <View style={s.copy}>
           <Text style={s.headline}>
             생활할 수 있는 집인지{'\n'}
-            <Text style={s.headlineStrong}>가기 전에</Text> 알려드려요
+            <Text style={s.headlineStrong}>확인해서</Text> 알려드려요
           </Text>
           <SpeakLink text={INTRO} label="소리로 들으실 수 있어요" />
         </View>
@@ -95,7 +96,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: COVER.cardEdge,
     // 따뜻한 바탕에 맞춰 그림자도 따뜻하게 깐다. 회색 그림자는 떠 보인다.
-    shadowColor: '#5A4632',
+    shadowColor: '#3A2E7A',
     shadowOpacity: 0.16,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 14 },

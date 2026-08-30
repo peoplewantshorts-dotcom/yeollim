@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { AppBar, H1, Screen, Sub, useSteadyPress } from '../src/components/ui';
 import { useStore, type Role } from '../src/store';
-import { HIT, TAP_GAP, color, family, font, radius, shadow, space } from '../src/theme';
+import { HIT, TAP_GAP, color, family, font, keepAll, radius, shadow, space } from '../src/theme';
 
 /**
  * 어떻게 오셨어요?
@@ -27,7 +27,7 @@ export default function RolePick() {
     <Screen>
       <AppBar title="시작하기" />
       <H1>어떻게 오셨어요?</H1>
-      <Sub>나중에 바꿀 수 있어요</Sub>
+      <Sub>나중에 수정할 수 있어요</Sub>
 
       <RoleCard
         title="집을 구하고 있어요"
@@ -113,12 +113,15 @@ const s = StyleSheet.create({
     paddingBottom: space.xl,
   },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: font.h2, fontFamily: family.extrabold, color: color.text },
+  cardTitle: { fontSize: font.h2 + 3, fontFamily: family.extrabold, color: color.text, ...keepAll },
   cardDesc: {
-    marginTop: space.xs,
-    fontSize: font.label,
-    lineHeight: font.label * 1.5,
-    color: color.textMuted, fontFamily: family.regular },
+    marginTop: space.sm,
+    fontSize: font.body,
+    lineHeight: font.body * 1.5,
+    color: color.textSub,
+    fontFamily: family.regular,
+    ...keepAll,
+  },
   go: {
     width: 40,
     height: 40,

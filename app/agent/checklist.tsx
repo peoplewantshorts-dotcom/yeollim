@@ -13,6 +13,9 @@ import {
   Sub,
   useSteadyPress,
 } from '../../src/components/ui';
+import { VoiceAnswer, VoiceButton } from '../../src/components/VoiceAnswer';
+import { parseKoreanNumber } from '../../src/domain/koreanNumber';
+import { voiceChoicesFor } from '../../src/domain/questions';
 import type { Media, PropertyFacts } from '../../src/domain/types';
 import { useStore } from '../../src/store';
 import { color, family, font, HIT, radius, space, TAP_BIG, TAP_GAP } from '../../src/theme';
@@ -41,6 +44,19 @@ export default function Checklist() {
   const [deposit, setDeposit] = useState<number | null>(property?.depositMan ?? null);
   const [rent, setRent] = useState<number | null>(property?.rentMan ?? null);
   const [media, setMedia] = useState<Media[]>(property?.media ?? []);
+  const [stopMin, setStopMin] = useState<number | null>(property?.stopMin ?? null);
+  const [storeMin, setStoreMin] = useState<number | null>(property?.storeMin ?? null);
+  const [hospitalMin, setHospitalMin] = useState<number | null>(property?.hospitalMin ?? null);
+
+  /*
+   * 말로 넣기.
+   *
+   * 중개사는 줄자를 들고 서 있다. 그 자세로 작은 칸을 정확히 누르라고 하면
+   * 그 자리에서 앱을 닫는다. 재면서 "구십이" 하고 말하면 들어가야 한다.
+   * 화면에는 들은 값을 먼저 보여주고 확인을 받는다 — 틀린 숫자가 그대로
+   * 판정에 쓰이는 것을 막는 규칙은 여기서도 같다.
+   */
+  const [voice, setVoice] = useState<VoiceTask | null>(null);
 
   // 다른 화면에서 이 매물의 값이 바뀌면(통화 분석 저장 등) 입력칸도 따라간다.
   const loaded = useRef(false);
@@ -69,7 +85,15 @@ export default function Checklist() {
 
   const save = () => {
     updateFacts(property.id, draft);
-    updateInfo(property.id, { memo, depositMan: deposit, rentMan: rent, media });
+    updateInfo(property.id, {
+      memo,
+      depositMan: deposit,
+      rentMan: rent,
+      media,
+      stopMin,
+      storeMin,
+      hospitalMin,
+    });
     router.replace('/agent');
   };
 
@@ -100,8 +124,8 @@ export default function Checklist() {
       */}
       <Card>
         <Text style={s.section}>보증금 · 월세</Text>
-        <Num label="보증금" unit="만원" value={deposit} onChange={setDeposit} />
-        <Num label="월세" unit="만원" value={rent} onChange={setRent} />
+        <Num label="보증금" unit="만원" value={deposit} onChange={setDeposit} ask={setVoice} />
+        <Num label="월세" unit="만원" value={rent} onChange={setRent} ask={setVoice} />
       </Card>
 
       {/* ① ② 계단 두 곳 — 한 장의 그림으로 어디를 보는지 알려준다 */}
@@ -117,11 +141,13 @@ export default function Checklist() {
           unit="칸"
           value={draft.outStepCount}
           onChange={(v) => set('outStepCount', v)}
+          ask={setVoice}
         />
         <Toggle
           label="중앙현관문 앞에 경사로가 있다"
           value={draft.outRamp}
           onChange={(v) => set('outRamp', v)}
+          ask={setVoice}
         />
         <Num
           label="② 현관 들어가서 1층 집 앞까지"
@@ -129,6 +155,7 @@ export default function Checklist() {
           unit="칸"
           value={draft.inStepCount}
           onChange={(v) => set('inStepCount', v)}
+          ask={setVoice}
         />
       </Card>
 
@@ -146,6 +173,7 @@ export default function Checklist() {
           unit="cm"
           value={draft.doorWidthCm}
           onChange={(v) => set('doorWidthCm', v)}
+          ask={setVoice}
         />
       </Card>
 
@@ -163,6 +191,7 @@ export default function Checklist() {
           unit="cm"
           value={draft.bathroomSillCm}
           onChange={(v) => set('bathroomSillCm', v)}
+          ask={setVoice}
         />
         <Num
           label="화장실 문 폭"
@@ -170,6 +199,7 @@ export default function Checklist() {
           unit="cm"
           value={draft.bathroomDoorCm}
           onChange={(v) => set('bathroomDoorCm', v)}
+          ask={setVoice}
         />
       </Card>
 
@@ -181,6 +211,28 @@ export default function Checklist() {
           label="승강기가 있다"
           value={draft.hasElevator}
           onChange={(v) => set('hasElevator', v)}
+          ask={setVoice}
+        />
+      </Card>
+
+      {/*
+        걸어서 몇 분인지.
+        판정에는 쓰지 않는다. 몇 분이면 충분한지에 대한 기준값은 근거가 없다.
+        다만 지역사회 접근성이 삶의 질에 미치는 영향은 문헌이 반복해서 말하고 있어
+        재어 두고 그대로 전한다.
+      */}
+      <Card>
+        <Text style={s.section}>
+          걸어서 몇 분 <Text style={s.optional}>선택</Text>
+        </Text>
+        <Num label="정류장까지" unit="분" value={stopMin} onChange={setStopMin} ask={setVoice} />
+        <Num label="편의점·마트까지" unit="분" value={storeMin} onChange={setStoreMin} ask={setVoice} />
+        <Num
+          label="병원까지"
+          unit="분"
+          value={hospitalMin}
+          onChange={setHospitalMin}
+          ask={setVoice}
         />
       </Card>
 
@@ -189,7 +241,12 @@ export default function Checklist() {
         <Text style={s.section}>
           주차 <Text style={s.optional}>선택</Text>
         </Text>
-        <Toggle label="주차 자리가 있다" value={draft.parking} onChange={(v) => set('parking', v)} />
+        <Toggle
+          label="주차 자리가 있다"
+          value={draft.parking}
+          onChange={(v) => set('parking', v)}
+          ask={setVoice}
+        />
       </Card>
 
       {/*
@@ -245,6 +302,33 @@ export default function Checklist() {
           accessibilityLabel="매물에 덧붙일 말을 적어주세요. 비워두셔도 됩니다."
         />
       </Card>
+
+      {/* 말로 넣기. 손으로 넣는 것을 대신하지 않고 나란히 둔다. */}
+      {voice ? (
+        <VoiceAnswer
+          visible
+          title={voice.title}
+          freeText={voice.kind === 'num'}
+          choices={
+            voice.kind === 'bool'
+              ? voiceChoicesFor([
+                  { id: 'yes', label: '있어요' },
+                  { id: 'no', label: '없어요' },
+                ])
+              : []
+          }
+          onPick={(said) => {
+            if (voice.kind === 'bool') {
+              voice.apply(said === 'yes');
+              return;
+            }
+            // 못 알아들으면 채우지 않는다. 틀린 숫자보다 빈 칸이 낫다.
+            const n = parseKoreanNumber(said);
+            if (n !== null) voice.apply(n);
+          }}
+          onClose={() => setVoice(null)}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -322,18 +406,23 @@ function SmallButton({ label, onPress }: { label: string; onPress: () => void })
 }
 
 /** 숫자 한 칸. 비우면 '모름'으로 남는다. */
+type VoiceTask = { title: string; kind: 'num' | 'bool'; apply: (v: unknown) => void };
+
 function Num({
   label,
   hint,
   unit,
   value,
   onChange,
+  ask,
 }: {
   label: string;
   hint?: string;
   unit: string;
   value: number | null;
   onChange: (v: number | null) => void;
+  /** 말로 넣기를 열어 주는 함수. 없으면 말하기 버튼을 붙이지 않는다. */
+  ask?: (t: VoiceTask) => void;
 }) {
   const [text, setText] = useState(value === null ? '' : String(value));
 
@@ -349,23 +438,41 @@ function Num({
   };
 
   return (
-    <View style={s.row}>
-      <View style={s.rowText}>
-        <Text style={s.rowLabel}>{label}</Text>
-        {hint ? <Text style={s.rowHint}>{hint}</Text> : null}
+    <View style={s.rowWrap}>
+      <View style={s.row}>
+        <View style={s.rowText}>
+          <Text style={s.rowLabel}>{label}</Text>
+          {hint ? <Text style={s.rowHint}>{hint}</Text> : null}
+        </View>
+        <View style={s.inputWrap}>
+          <TextInput
+            value={text}
+            onChangeText={commit}
+            keyboardType="decimal-pad"
+            placeholder="—"
+            placeholderTextColor={color.textMuted}
+            style={s.input}
+            accessibilityLabel={`${label}. 숫자로 넣어주세요. 단위는 ${unit}. 모르시면 비워두세요.`}
+          />
+          <Text style={s.unit}>{unit}</Text>
+        </View>
       </View>
-      <View style={s.inputWrap}>
-        <TextInput
-          value={text}
-          onChangeText={commit}
-          keyboardType="decimal-pad"
-          placeholder="—"
-          placeholderTextColor={color.textMuted}
-          style={s.input}
-          accessibilityLabel={`${label}. 숫자로 넣어주세요. 단위는 ${unit}. 모르시면 비워두세요.`}
+      {ask ? (
+        <VoiceButton
+          label="말로 넣기"
+          onPress={() =>
+            ask({
+              title: `${label}은 얼마인가요?`,
+              kind: 'num',
+              apply: (v) => {
+                const n = v as number;
+                setText(String(n));
+                onChange(n);
+              },
+            })
+          }
         />
-        <Text style={s.unit}>{unit}</Text>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -380,10 +487,12 @@ function Toggle({
   label,
   value,
   onChange,
+  ask,
 }: {
   label: string;
   value: boolean | null;
   onChange: (v: boolean | null) => void;
+  ask?: (t: VoiceTask) => void;
 }) {
   const pick = useSteadyPress((v: boolean | null) => onChange(v));
   const opts: { v: boolean | null; text: string }[] = [
@@ -412,6 +521,17 @@ function Toggle({
           );
         })}
       </View>
+      {ask ? (
+        <VoiceButton
+          onPress={() =>
+            ask({
+              title: label,
+              kind: 'bool',
+              apply: (v) => onChange(v as boolean | null),
+            })
+          }
+        />
+      ) : null}
     </View>
   );
 }
@@ -435,8 +555,8 @@ const s = StyleSheet.create({
     fontFamily: family.regular,
   },
 
+  rowWrap: { marginTop: space.xl },
   row: {
-    marginTop: space.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -4,7 +4,7 @@ import { AppBar, Card, Chip, ChipRow, H1, Screen, Sub, useSteadyPress } from '..
 import { useSpeak } from '../src/speech';
 import { CLIP_INFO } from '../src/speech/clips';
 import { useStore, type VoiceSex } from '../src/store';
-import { color, family, font, HIT, radius, space } from '../src/theme';
+import { HIT, TAP_BIG, color, family, font, keepAll, radius, space } from '../src/theme';
 
 /**
  * 설정.
@@ -129,15 +129,17 @@ function TrySound({ onPress }: { onPress: () => void }) {
 
 const s = StyleSheet.create({
   label: { fontSize: font.body, fontFamily: family.bold, color: color.text },
+  // 설정 화면의 설명도 본문이다. 작게 두면 정작 이 앱이 필요한 분이 못 읽는다.
   hint: {
     marginTop: space.sm,
-    fontSize: font.caption,
-    lineHeight: font.caption * 1.5,
-    color: color.textMuted,
+    fontSize: font.label,
+    lineHeight: font.label * 1.55,
+    color: color.textSub,
     fontFamily: family.regular,
+    ...keepAll,
   },
   try: {
-    minHeight: HIT,
+    minHeight: TAP_BIG,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,17 +147,17 @@ const s = StyleSheet.create({
     marginTop: space.lg,
     paddingHorizontal: space.lg,
     borderRadius: radius.chip,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: color.borderStrong,
-    backgroundColor: color.surfaceSoft,
+    backgroundColor: color.surface,
   },
   tryPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
-  tryGlyph: { fontSize: font.body },
-  tryText: { fontSize: font.caption + 1, color: color.primaryText, fontFamily: family.bold },
+  tryGlyph: { fontSize: 22 },
+  tryText: { fontSize: font.label, color: color.primaryText, fontFamily: family.bold },
   meta: {
     marginTop: space.xxl,
-    fontSize: font.caption,
-    lineHeight: font.caption * 1.6,
+    fontSize: font.caption + 1,
+    lineHeight: (font.caption + 1) * 1.6,
     color: color.textMuted,
     fontFamily: family.regular,
   },

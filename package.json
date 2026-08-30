@@ -34,9 +34,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:engine": "tsc --ignoreConfig src/domain/matching.ts src/domain/callAnalysis.ts src/domain/seed.ts src/domain/types.ts src/domain/voiceMatch.ts src/domain/questions.ts --outDir .engine-build --module commonjs --target es2020 --skipLibCheck --esModuleInterop && node tests/engine.test.js",
+    "test:engine": "tsc --ignoreConfig src/domain/matching.ts src/domain/callAnalysis.ts src/domain/seed.ts src/domain/types.ts src/domain/voiceMatch.ts src/domain/questions.ts src/domain/koreanNumber.ts --outDir .engine-build --module commonjs --target es2020 --skipLibCheck --esModuleInterop && node tests/engine.test.js",
     "typecheck": "tsc --noEmit",
-    "test:voice": "tsc --ignoreConfig src/domain/voiceMatch.ts src/domain/questions.ts --outDir .engine-build --module commonjs --target es2020 --skipLibCheck --esModuleInterop && node tests/voice.test.js",
+    "test:voice": "tsc --ignoreConfig src/domain/voiceMatch.ts src/domain/questions.ts src/domain/koreanNumber.ts --outDir .engine-build --module commonjs --target es2020 --skipLibCheck --esModuleInterop && node tests/voice.test.js",
     "voice:lines": "node scripts/collect-lines.mjs",
     "voice:make": "node scripts/make-voice.mjs",
     "deploy": "expo export --platform web && node scripts/deploy-web.mjs"

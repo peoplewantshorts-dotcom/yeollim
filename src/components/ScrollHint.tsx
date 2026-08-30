@@ -14,9 +14,12 @@ import { family, font, radius, space } from '../theme';
 export function ScrollHint({
   text = '아래로 내리면서 하나씩 골라주세요',
   visible,
+  /** 아래 버튼 영역 위로 얼마나 띄울지 */
+  bottom = space.lg,
 }: {
   text?: string;
   visible: boolean;
+  bottom?: number;
 }) {
   const fade = useRef(new Animated.Value(0)).current;
   const bob = useRef(new Animated.Value(0)).current;
@@ -57,7 +60,7 @@ export function ScrollHint({
 
   return (
     <Animated.View
-      style={[s.wrap, { opacity: fade }]}
+      style={[s.wrap, { opacity: fade, bottom }]}
       pointerEvents="none"
       // 화면 낭독기는 이 안내를 이미 순서대로 읽어주므로 중복해서 말하지 않는다.
       accessibilityElementsHidden
@@ -74,17 +77,17 @@ export function ScrollHint({
 }
 
 const s = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, bottom: space.lg, alignItems: 'center' },
+  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
     paddingHorizontal: space.xl,
-    paddingVertical: space.md,
+    paddingVertical: space.lg,
     borderRadius: radius.chip,
     backgroundColor: 'rgba(20,18,34,0.88)',
   },
   // ☝︎ 는 위를 가리키는 손이라 180도 돌려 아래로 향하게 한다
-  finger: { fontSize: 18, color: '#FFFFFF' },
-  text: { fontSize: font.caption + 1, color: '#FFFFFF', fontFamily: family.bold },
+  finger: { fontSize: 24, color: '#FFFFFF' },
+  text: { fontSize: font.label, color: '#FFFFFF', fontFamily: family.bold },
 });

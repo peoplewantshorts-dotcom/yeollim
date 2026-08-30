@@ -28,7 +28,7 @@ const M = require(path.join(out, 'matching'));
 /** 코드에서 긁어올 수 없는 화면 문구는 여기 적는다. */
 const EXTRA = [
   // 시작 · 안내
-  '열림. 생활할 수 있는 집인지, 가기 전에 알려드려요.',
+  '열림. 생활할 수 있는 집인지, 확인해서 알려드려요.',
   '맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다. 시간 제한은 없어요.',
   '어떤 집을 찾으세요? 아직 정하지 않으셨으면 비워두고 넘어가셔도 됩니다.',
 
@@ -67,7 +67,7 @@ const add = (t) => {
 };
 
 // 프로필 문항 — 제목과 선택지
-for (const q of [Q.WHEELCHAIR_Q, Q.WALK_AID_Q, Q.CONTACT_Q]) {
+for (const q of [Q.MOBILITY_Q, Q.CONTACT_Q]) {
   add(q.title);
   add(q.hint);
   for (const c of q.choices) add(c.label);
@@ -76,6 +76,7 @@ for (const q of [Q.WHEELCHAIR_Q, Q.WALK_AID_Q, Q.CONTACT_Q]) {
 // 요청서 머리말
 for (const v of Object.values(Q.MOBILITY_SENTENCE)) add(v);
 for (const v of Object.values(Q.CONTACT_SENTENCE)) add(v);
+add(Q.MOBILITY_ECHO);
 
 // 이동 방법마다 자동으로 붙는 조건 문장
 for (const m of ['power', 'manual', 'cane', 'crutch', 'walker', 'none']) {

@@ -17,7 +17,7 @@ import {
 } from '../../src/components/ui';
 import { CONTACT_SENTENCE, MOBILITY_SENTENCE, termLines } from '../../src/domain/questions';
 import { useStore } from '../../src/store';
-import { color, family, font, space } from '../../src/theme';
+import { color, family, font, keepAll, space } from '../../src/theme';
 
 /**
  * 내 요청서.
@@ -47,9 +47,13 @@ export default function RequestScreen() {
 
   const musts = profile.requirements.filter((r) => r.priority === 'must' && r.cardText);
   const terms = termLines(profile.terms);
-  // 이름을 안 적으셨으면 없는 이름을 지어내지 않는다.
-  const who = profile.terms?.name?.trim();
-  const title = who ? `${who} 님이 찾는 집` : '찾는 집';
+  /*
+   * 이름을 받지 않는다.
+   *
+   * 이름은 개인정보라 받는 순간 동의·보관·파기 절차가 따라붙는데, 우리가 이름으로
+   * 하는 일은 요청서를 구분하는 것뿐이다. 그건 날짜로 충분하다.
+   */
+  const title = '제가 찾는 집';
 
   const spoken = [
     `${title}.`,
@@ -89,7 +93,8 @@ export default function RequestScreen() {
         {/* 전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다. 밑줄로 세워 둔다. */}
         {profile.contact === 'text' ? (
           <View style={s.mark}>
-            <Text style={[noteText, s.markText]}>전화가 어려워요. 문자로 연락 주세요</Text>
+            <Text style={[noteText, s.markText]}>전화가 어려워요</Text>
+            <Text style={[noteText, s.markText]}>문자로 연락 주세요</Text>
           </View>
         ) : null}
 
@@ -125,9 +130,11 @@ const s = StyleSheet.create({
   footNote: {
     marginTop: space.md,
     textAlign: 'center',
-    fontSize: font.caption,
-    color: color.textMuted,
+    fontSize: font.label,
+    lineHeight: font.label * 1.5,
+    color: color.textSub,
     fontFamily: family.regular,
+    ...keepAll,
   },
   title: { fontSize: font.display, fontFamily: family.extrabold, letterSpacing: -0.6 },
 
@@ -136,14 +143,23 @@ const s = StyleSheet.create({
    * 제목은 크기로, 구획은 밑줄로, 꼭 봐야 할 한 줄은 형광펜으로.
    * 전부 색으로만 나누면 색이 비슷해 눈이 어디를 봐야 할지 못 찾는다.
    */
+  /*
+   * 형광펜.
+   *
+   * 노란색을 썼더니 이 줄만 앱에서 떨어져 나와 보였다. 강조는 눈에 띄어야 하는 것이지
+   * 다른 데서 온 것처럼 보여야 하는 것이 아니다. 같은 보라 계열에서 가장 연한 값으로
+   * 칠하고, 대신 글자를 굵게 해 강조를 만든다.
+   *
+   * 한 줄로 두면 '전화가 어려워요. 문자로' 에서 끊겨 읽기가 나빠서 두 줄로 나눴다.
+   */
   mark: {
     alignSelf: 'flex-start',
     marginVertical: space.xs,
-    paddingHorizontal: space.sm,
-    borderRadius: 3,
-    backgroundColor: color.fixBg,
+    paddingHorizontal: space.md,
+    borderRadius: 4,
+    backgroundColor: color.primarySoft,
   },
-  markText: { fontFamily: family.bold },
+  markText: { fontFamily: family.bold, color: color.onPrimarySoft },
   section: {
     marginTop: RULE - 10,
     fontFamily: family.extrabold,

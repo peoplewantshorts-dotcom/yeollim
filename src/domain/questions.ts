@@ -28,31 +28,31 @@ export interface Choice {
  */
 
 export interface ProfileQuestion {
-  id: 'wheelchair' | 'walkAid' | 'contact';
+  id: 'mobility' | 'contact';
   title: string;
   /** 제목 아래 작은 글씨 */
   hint?: string;
   choices: Choice[];
 }
 
-export const WHEELCHAIR_Q: ProfileQuestion = {
-  id: 'wheelchair',
-  title: '혹시 휠체어를 타시나요?',
+/**
+ * 이동 방법.
+ *
+ * 처음에는 휠체어를 먼저 묻고 '타지 않아요'를 고른 분에게만 지팡이·목발을
+ * 보여줬다. 화면은 짧아지지만 누르기 전에는 뒤에 뭐가 있는지 알 수 없고,
+ * 지팡이를 쓰는 분이 '타지 않아요'를 한 번 더 눌러야 했다.
+ * 여섯 개를 한 화면에 펼쳐 두면 자기 것을 바로 찾는다.
+ */
+export const MOBILITY_Q: ProfileQuestion = {
+  id: 'mobility',
+  title: '이 중에 사용하시는 것이 있으세요?',
   choices: [
     { id: 'power', label: '전동휠체어를 타요' },
     { id: 'manual', label: '수동휠체어를 타요' },
-    { id: 'no', label: '타지 않아요' },
-  ],
-};
-
-export const WALK_AID_Q: ProfileQuestion = {
-  id: 'walkAid',
-  title: '혹시 지팡이나 목발을 사용하시나요?',
-  choices: [
     { id: 'cane', label: '지팡이를 사용해요' },
     { id: 'crutch', label: '목발을 사용해요' },
     { id: 'walker', label: '보행기를 사용해요' },
-    { id: 'none', label: '아니요' },
+    { id: 'none', label: '아무것도 사용하지 않아요' },
   ],
 };
 
@@ -87,18 +87,11 @@ export const MOBILITY_SENTENCE: Record<MobilityId, string> = {
 /**
  * 프로필 화면 맨 아래에서 고른 것을 되짚어 주는 한 줄.
  *
- * 요청서용 문장을 그대로 쓰면 두 가지가 어긋난다. 말투가 '~합니다'라 앱이 사용자에게
- * 건네는 말로는 딱딱하고, 문장이 길어 마지막 글자 하나만 다음 줄로 떨어진다.
- * 한 줄에 들어가는 길이로 따로 쓴다.
+ * 처음에는 고른 보조기구를 그대로 되읽어 줬는데('지팡이에 맞춰 찾아드릴게요'),
+ * 화면에 방금 고른 것이 이미 보이는데 또 말하는 셈이었다. 그보다는 이 답으로
+ * 무엇을 해드릴 것인지를 말하는 편이 낫다.
  */
-export const MOBILITY_ECHO: Record<MobilityId, string> = {
-  power: '전동휠체어에 맞춰 찾아드릴게요',
-  manual: '수동휠체어에 맞춰 찾아드릴게요',
-  cane: '지팡이에 맞춰 찾아드릴게요',
-  crutch: '목발에 맞춰 찾아드릴게요',
-  walker: '보행기에 맞춰 찾아드릴게요',
-  none: '말씀하신 대로 찾아드릴게요',
-};
+export const MOBILITY_ECHO = '본인에게 적합한 집을 찾아드릴게요';
 
 export const CONTACT_SENTENCE: Record<ContactId, string> = {
   text: '전화가 어려우십니다. 문자로 연락 주세요',
@@ -151,6 +144,9 @@ export function deriveRequirements(mobility: MobilityId): Requirement[] {
 /**
  * 보증금 구간.
  *
+ * 말로 고를 때 구간 경계에 걸치는 금액(예: 삼백만원)은 어느 쪽인지 알 수 없다.
+ * 그때는 한쪽으로 찍지 않고 되묻는다.
+ *
  * 원룸 시세에 맞춰 아래쪽을 촘촘하게, 위쪽을 넓게 잡았다.
  * 숫자를 직접 적게 하면 손이 떨리는 분과 숫자에 어려움이 있는 분이 먼저 막힌다.
  */
@@ -196,6 +192,20 @@ export function suggestAreas(query: string, limit = 3): string[] {
   return AREA_SUGGESTIONS.filter((a) => a.replace(/\s+/g, '').includes(q)).slice(0, limit);
 }
 
+/** 방 개수 */
+export const ROOM_OPTIONS: { id: string; label: string }[] = [
+  { id: 'one', label: '원룸' },
+  { id: 'two', label: '방 두 개' },
+  { id: 'three', label: '방 세 개 이상' },
+];
+
+/** 층 */
+export const FLOOR_OPTIONS: { id: string; label: string }[] = [
+  { id: 'low', label: '낮은 층' },
+  { id: 'high', label: '높은 층' },
+  { id: 'any', label: '상관없어요' },
+];
+
 /** 걸어서 갈 수 있으면 좋은 곳 */
 export const NEAR_OPTIONS: { id: string; label: string }[] = [
   { id: 'stop', label: '버스나 지하철 정류장' },
@@ -224,8 +234,9 @@ export function termLines(t: GeneralTerms | undefined | null): string[] {
     t.rent ? `월세 ${BAND_LABEL[t.rent] ?? t.rent}` : '',
   ].filter(Boolean);
   if (money.length) out.push(money.join(' · '));
-  if (t.rooms === 'one') out.push('방 한 개면 돼요');
-  if (t.rooms === 'two') out.push('방 두 개 이상이면 좋겠어요');
+  if (t.rooms === 'one') out.push('원룸이면 돼요');
+  if (t.rooms === 'two') out.push('방 두 개면 좋겠어요');
+  if (t.rooms === 'three') out.push('방 세 개 이상이면 좋겠어요');
   if (t.floorPref === 'low') out.push('낮은 층이 좋아요');
   if (t.floorPref === 'high') out.push('높은 층이 좋아요');
   if (t.near.length) {
@@ -249,35 +260,37 @@ const VOICE_WORDS: Record<string, string[]> = {
   // 한쪽으로 단정하지 않고 어느 쪽인지 되묻게 한다.
   power: ['전동', '전동 휠체어', '전동차', '휠체어 타요'],
   manual: ['수동', '수동 휠체어', '손으로 미는 휠체어', '휠체어 타요'],
-  no: ['안 타요', '타지 않아요', '아니요', '휠체어 안 타요'],
 
   cane: ['지팡이', '지팡이 짚어요', '단장', '지팡이 써요'],
   crutch: ['목발', '목발 짚어요', '크러치'],
   walker: ['보행기', '워커', '보행 보조기', '밀고 다녀요'],
-  none: ['아니요', '안 써요', '아무것도 안 써요', '그냥 걸어요'],
+  none: ['아무것도 안 써요', '안 써요', '그냥 걸어요', '아니요'],
 
   text: ['글로', '문자로', '글이 편해요', '문자가 편해요', '전화 말고'],
   phone: ['전화', '전화도 괜찮아요', '통화', '전화 괜찮아요'],
 
   // 보증금
+  // 구간 경계에 걸치는 말은 한쪽에만 둔다. 양쪽에 다 넣으면 어느 쪽인지
+  // 못 가려서 늘 되묻게 된다.
   d0: ['없어요', '보증금 없어요', '무보증'],
-  d100: ['백에서 삼백', '백만원', '이백', '삼백'],
-  d300: ['삼백에서 오백', '삼백만원', '사백', '오백'],
-  d500: ['오백에서 천', '오백만원', '칠백', '천만원'],
-  d1000: ['천에서 이천', '천만원', '천오백', '이천'],
-  d2000: ['이천 넘어도', '이천만원 이상', '더 돼요', '상관없어요'],
+  d100: ['백만원', '이백만원'],
+  d300: ['삼백만원', '사백만원'],
+  d500: ['오백만원', '육백만원', '칠백만원', '팔백만원', '구백만원'],
+  d1000: ['천만원', '천오백만원'],
+  d2000: ['이천만원', '이천만원 이상', '더 돼요'],
 
   // 월세
   r0: ['전세', '월세 없어요', '전세로'],
-  r20: ['이십 아래', '이십만원 아래', '싼 거', '이십 이하'],
-  r2030: ['이십에서 삼십', '이십오만원', '삼십만원'],
-  r3040: ['삼십에서 사십', '삼십오만원', '사십만원'],
-  r4050: ['사십에서 오십', '사십오만원', '오십만원'],
-  r50: ['오십 넘어도', '오십만원 이상', '상관없어요'],
+  r20: ['십만원', '십오만원', '싼 거'],
+  r2030: ['이십만원', '이십오만원'],
+  r3040: ['삼십만원', '삼십오만원'],
+  r4050: ['사십만원', '사십오만원'],
+  r50: ['오십만원', '육십만원', '더 돼요'],
 
   // 방 개수 · 층
-  one: ['한 개', '하나', '원룸', '한 칸'],
-  two: ['두 개', '둘', '투룸', '방 두 개'],
+  one: ['원룸', '한 개', '하나', '한 칸'],
+  two: ['투룸', '두 개', '둘', '방 두 개'],
+  three: ['쓰리룸', '세 개', '셋', '방 세 개', '세 개 이상'],
   low: ['낮은 층', '아래층', '일층', '저층'],
   high: ['높은 층', '위층', '고층'],
   any: ['상관없어요', '아무거나', '괜찮아요'],
@@ -286,6 +299,10 @@ const VOICE_WORDS: Record<string, string[]> = {
   stop: ['정류장', '버스', '지하철', '버스 정류장'],
   store: ['편의점', '마트', '가게'],
   hospital: ['병원', '의원', '보건소'],
+
+  // 중개사가 있다·없다를 말로 답할 때
+  yes: ['있어요', '있습니다', '네', '있음', '예'],
+  no: ['없어요', '없습니다', '아니요', '없음', '아니'],
 };
 
 /** 이 질문을 말로 답할 때 쓸 후보 목록 */

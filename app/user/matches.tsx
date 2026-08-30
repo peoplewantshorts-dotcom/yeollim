@@ -47,7 +47,7 @@ const PENDING_SKIN = { bar: color.unknownBar, bg: color.unknownBg, fg: color.unk
  */
 export default function MatchesScreen() {
   const router = useRouter();
-  const { profile, properties } = useStore();
+  const { profile, properties, requests } = useStore();
 
   const results = useMemo(() => {
     if (!profile) return [];
@@ -74,6 +74,17 @@ export default function MatchesScreen() {
   const confirmed = results.filter((r) => !r.result.pending && r.result.verdict !== 'stop').length;
   const stillChecking = properties.filter((p) => p.checkedAt === null).length;
 
+  /*
+   * 요청서를 보낸 뒤에 중개사가 새로 올린 곳.
+   *
+   * 실제 알림(푸시)은 서버가 있어야 보낼 수 있다. 지금은 기기 안에만 두는
+   * 구조라, 화면을 열었을 때 무엇이 새로 들어왔는지를 알려주는 것까지만 한다.
+   */
+  const sentOn = requests[0]?.sentAt.slice(0, 10) ?? null;
+  const isNew = (p: Property) =>
+    sentOn !== null && p.checkedAt !== null && p.checkedAt >= sentOn;
+  const freshCount = properties.filter(isNew).length;
+
   return (
     <Screen>
       <AppBar title="확인 결과" />
@@ -92,6 +103,12 @@ export default function MatchesScreen() {
           : '확인이 끝나는 대로 여기에 올려드릴게요'}
       </Sub>
 
+      {freshCount > 0 ? (
+        <View style={s.fresh}>
+          <Text style={s.freshText}>중개사가 {freshCount}곳을 새로 올렸어요</Text>
+        </View>
+      ) : null}
+
       {stillChecking > 0 ? (
         <View style={s.waiting}>
           <Text style={s.waitingText}>{stillChecking}곳은 중개사가 확인하고 있어요</Text>
@@ -99,13 +116,21 @@ export default function MatchesScreen() {
       ) : null}
 
       {results.map(({ property, result }) => (
-        <VerdictCard key={property.id} property={property} result={result} />
+        <VerdictCard key={property.id} property={property} result={result} fresh={isNew(property)} />
       ))}
     </Screen>
   );
 }
 
-function VerdictCard({ property, result }: { property: Property; result: MatchResult }) {
+function VerdictCard({
+  property,
+  result,
+  fresh,
+}: {
+  property: Property;
+  result: MatchResult;
+  fresh?: boolean;
+}) {
   const skin = result.pending ? PENDING_SKIN : SKIN[result.verdict];
   const shape = result.pending ? PENDING_SHAPE : VERDICT_SHAPE[result.verdict];
   const spoken = speakableResult(property.name, result);
@@ -125,6 +150,7 @@ function VerdictCard({ property, result }: { property: Property; result: MatchRe
         </View>
 
         <Text style={s.name}>{property.name}</Text>
+        {fresh ? <Text style={s.freshTag}>새로 올라왔어요</Text> : null}
 
         {result.lines.map((l, i) => (
           <Text key={i} style={noteText}>
@@ -164,6 +190,22 @@ const s = StyleSheet.create({
     letterSpacing: -0.6,
   },
 
+
+  fresh: {
+    marginTop: space.lg,
+    alignSelf: 'flex-start',
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
+    borderRadius: radius.chip,
+    backgroundColor: color.goBg,
+  },
+  freshText: { fontSize: font.label, color: color.goText, fontFamily: family.bold },
+  freshTag: {
+    marginBottom: space.xs,
+    fontSize: font.caption + 1,
+    color: color.goText,
+    fontFamily: family.extrabold,
+  },
 
   memo: { marginTop: space.sm, color: color.paperInkSub },
 

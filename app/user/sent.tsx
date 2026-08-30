@@ -59,12 +59,12 @@ export default function SentScreen() {
         <Accent>보냈어요</Accent>
       </H1>
       <Sub>
-        중개사가 매물을 재보고 나면{'\n'}
-        바로 알려드릴게요
+        중개사가 매물을 확인하고{'\n'}
+        알려드릴게요
       </Sub>
 
       <SpeakLink
-        text={`요청서를 보냈어요. 중개사가 매물을 재보고 나면 바로 알려드릴게요. 지금 ${checked.length}곳은 바로 보실 수 있어요.`}
+        text={`요청서를 보냈어요. 중개사가 매물을 확인하고 알려드릴게요. 지금 ${checked.length}곳은 바로 보실 수 있어요.`}
         label="소리로 들으실 수 있어요"
       />
 
@@ -80,13 +80,12 @@ export default function SentScreen() {
         </View>
       </View>
 
-      <Text style={s.note}>
-        덜 잰 집은 아직 알려드리지 않아요.{BR}
-        확실할 때만 말씀드릴게요.
-      </Text>
 
       {latest ? (
-        <Text style={s.meta}>보낸 날짜 {latest.sentAt.slice(0, 10)}</Text>
+        <View style={s.sentBox}>
+          <Text style={s.sentLabel}>보낸 날짜</Text>
+          <Text style={s.sentDate}>{latest.sentAt.slice(0, 10)}</Text>
+        </View>
       ) : null}
     </Screen>
   );
@@ -122,21 +121,27 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  statusLabel: { fontSize: font.body, color: color.textSub, fontFamily: family.regular },
+  statusLabel: { fontSize: font.body, color: color.text, fontFamily: family.semibold },
   statusValue: { fontSize: font.h2 + 3, color: color.primaryText, fontFamily: family.extrabold },
   divider: { height: 1, backgroundColor: color.surfaceSoft },
 
-  note: {
-    marginTop: space.xl,
-    fontSize: font.caption + 1,
-    lineHeight: (font.caption + 1) * 1.6,
-    color: color.textMuted,
-    fontFamily: family.regular,
+  /*
+   * 보낸 날짜.
+   *
+   * 이름을 받지 않으므로 이 날짜가 요청서를 부르는 이름이 된다. 중개사와
+   * 이야기할 때도 이 날짜로 가리키게 되므로 작게 흘려 두면 안 된다.
+   */
+  sentBox: {
+    marginTop: space.xxl,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
+    borderRadius: radius.button,
+    backgroundColor: color.primarySoft,
   },
-  meta: {
-    marginTop: space.lg,
-    fontSize: font.caption,
-    color: color.textMuted,
-    fontFamily: family.regular,
-  },
+  sentLabel: { fontSize: font.label, color: color.onPrimarySoft, fontFamily: family.semibold },
+  sentDate: { fontSize: font.h2 + 2, color: color.onPrimarySoft, fontFamily: family.extrabold },
 });

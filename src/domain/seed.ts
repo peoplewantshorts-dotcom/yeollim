@@ -20,6 +20,9 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: null,
     rentMan: null,
     media: [],
+    stopMin: null,
+    storeMin: null,
+    hospitalMin: null,
     facts: emptyFacts(),
   },
   {
@@ -31,6 +34,9 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: 500,
     rentMan: 40,
     media: [],
+    stopMin: 4,
+    storeMin: 3,
+    hospitalMin: 9,
     facts: {
       doorWidthCm: 92,
       outStepCount: 2,
@@ -52,6 +58,9 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: 300,
     rentMan: 30,
     media: [],
+    stopMin: null,
+    storeMin: null,
+    hospitalMin: null,
     facts: {
       doorWidthCm: 78,
       outStepCount: 4,
@@ -73,6 +82,9 @@ export const SEED_PROPERTIES: Property[] = [
     depositMan: 1000,
     rentMan: 45,
     media: [],
+    stopMin: 8,
+    storeMin: 5,
+    hospitalMin: 15,
     facts: {
       doorWidthCm: 85,
       outStepCount: 1,

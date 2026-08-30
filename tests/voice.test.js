@@ -12,10 +12,12 @@ const OUT = path.join(__dirname, '..', '.engine-build');
 const { matchVoice, toJamo, similarity, ACCEPT } = require(path.join(OUT, 'voiceMatch'));
 const {
   voiceChoicesFor,
-  WHEELCHAIR_Q,
-  WALK_AID_Q,
+  MOBILITY_Q,
   CONTACT_Q,
+  DEPOSIT_BANDS,
+  ROOM_OPTIONS,
 } = require(path.join(OUT, 'questions'));
+const { parseKoreanNumber } = require(path.join(OUT, 'koreanNumber'));
 
 let fail = 0;
 const eq = (label, got, want) => {
@@ -26,11 +28,12 @@ const eq = (label, got, want) => {
 };
 const group = (t) => console.log(`\n${t}`);
 
-const WHEEL = voiceChoicesFor(WHEELCHAIR_Q.choices);
-const AID = voiceChoicesFor(WALK_AID_Q.choices);
+const MOBILITY = voiceChoicesFor(MOBILITY_Q.choices);
 const CONTACT = voiceChoicesFor(CONTACT_Q.choices);
+const DEPOSIT = voiceChoicesFor(DEPOSIT_BANDS);
+const ROOMS = voiceChoicesFor(ROOM_OPTIONS);
 
-const pick = (said, choices = WHEEL) => {
+const pick = (said, choices = MOBILITY) => {
   const r = matchVoice(Array.isArray(said) ? said : [said], choices);
   return {
     top: r.ranked[0] && r.ranked[0].id,
@@ -44,15 +47,17 @@ eq('휠 → ㅎㅟㄹ', toJamo('휠'), 'ㅎㅟㄹ');
 eq('띄어쓰기와 부호를 걷어낸다', toJamo('전동 휠체어!'), toJamo('전동휠체어'));
 eq('휠 과 힐 은 자모로 보면 한 칸 차이', similarity(toJamo('휠'), toJamo('힐')) > 0.6, true);
 
-group('또렷하게 말한 경우 — 휠체어');
+group('또렷하게 말한 경우 — 한 화면에 여섯 가지');
 eq('"전동휠체어를 타요"', pick('전동휠체어를 타요').top, 'power');
 eq('"수동휠체어를 타요"', pick('수동휠체어를 타요').top, 'manual');
-eq('"타지 않아요"', pick('타지 않아요').top, 'no');
+eq('"지팡이를 사용해요"', pick('지팡이를 사용해요').top, 'cane');
+eq('"목발을 사용해요"', pick('목발을 사용해요').top, 'crutch');
+eq('"보행기를 사용해요"', pick('보행기를 사용해요').top, 'walker');
 
 group('실제로 하는 말 — 화면 문구와 다르게 말한다');
 eq('"전동" 한 마디만', pick('전동').top, 'power');
 eq('"수동이요"', pick('수동이요').top, 'manual');
-eq('"휠체어 안 타요"', pick('휠체어 안 타요').top, 'no');
+eq('"목발 짚어요"', pick('목발 짚어요').top, 'crutch');
 
 group('발음이 흐려 잘못 받아 적힌 경우');
 eq('"전동 힐체아" → 전동', pick('전동 힐체아').top, 'power');
@@ -65,12 +70,18 @@ eq('  두 답이 서로 다르다',
    pick('수동휠체어를 타요').top !== pick('전동휠체어를 타요').top, true);
 eq('"휠체어 타요"만으로는 확정하지 않는다', pick('휠체어 타요').action !== 'confirm', true);
 
-group('지팡이·목발·보행기');
-eq('"지팡이를 사용해요"', pick('지팡이를 사용해요', AID).top, 'cane');
-eq('"목발 짚어요"', pick('목발 짚어요', AID).top, 'crutch');
-eq('"보행기 밀고 다녀요"', pick('보행기 밀고 다녀요', AID).top, 'walker');
-eq('"지파이 써요" → 지팡이', pick('지파이 써요', AID).top, 'cane');
-eq('"보앵기" → 보행기', pick('보앵기', AID).top, 'walker');
+group('흐린 발음도 잡는다');
+eq('"보행기 밀고 다녀요"', pick('보행기 밀고 다녀요').top, 'walker');
+eq('"지파이 써요" → 지팡이', pick('지파이 써요').top, 'cane');
+eq('"보앵기" → 보행기', pick('보앵기').top, 'walker');
+
+group('금액 구간과 방 개수');
+eq('"사백만원"', pick('사백만원', DEPOSIT).top, 'd300');
+// 300만원은 100~300 과 300~500 의 경계라 어느 쪽인지 알 수 없다.
+// 한쪽으로 찍지 않고 되묻는 것이 맞다.
+eq('경계값은 찍지 않고 되묻는다', pick('삼백만원', DEPOSIT).action, 'choose');
+eq('"원룸"', pick('원룸', ROOMS).top, 'one');
+eq('"쓰리룸"', pick('쓰리룸', ROOMS).top, 'three');
 
 group('연락 방식');
 eq('"문자로 주세요"', pick('문자로 주세요', CONTACT).top, 'text');
@@ -83,7 +94,21 @@ group('못 알아들었으면 고르지 않는다');
 eq('전혀 상관없는 말', pick('오늘 날씨가 좋네요').action, 'unclear');
 eq('빈 소리', pick('').action, 'unclear');
 eq('  못 알아들으면 확정하지 않는다', pick('음...').action !== 'confirm', true);
-eq('  보조기구 질문에서도 마찬가지', pick('그게 저기', AID).action !== 'confirm', true);
+eq('  금액 질문에서도 마찬가지', pick('그게 저기', DEPOSIT).action !== 'confirm', true);
+
+group('말한 숫자를 알아듣는다 — 중개사가 재면서 말한다');
+const num = (t) => parseKoreanNumber(t);
+eq('"92"', num('92'), 92);
+eq('"구십이"', num('구십이'), 92);
+eq('"구십이 센티"', num('구십이 센티'), 92);
+eq('"팔십오"', num('팔십오'), 85);
+eq('"백오십"', num('백오십'), 150);
+eq('"세 칸"', num('세 칸'), 3);
+eq('"한 칸"', num('한 칸'), 1);
+eq('"없어요" 는 0', num('없어요'), 0);
+eq('"평지예요" 도 0', num('평지예요'), 0);
+eq('못 알아들으면 비워 둔다', num('그게 저기'), null);
+eq('빈 소리도 비워 둔다', num(''), null);
 
 group('통과 기준');
 eq('기준값이 지나치게 낮지 않다', ACCEPT >= 0.55, true);

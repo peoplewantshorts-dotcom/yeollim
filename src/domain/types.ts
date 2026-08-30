@@ -50,14 +50,6 @@ export interface Requirement {
  */
 export interface GeneralTerms {
   /**
-   * 중개사가 부를 이름.
-   *
-   * 앱은 이름을 묻지 않는데 화면에는 '이○○ 님'이라고 적혀 있었다. 없는 것을
-   * 있는 것처럼 쓴 것이라 지웠다. 대신 여기서 한 번만 받고, 비워두면
-   * 이름 없이 '찾는 집'으로 쓴다. 성 한 글자만 적어도 된다.
-   */
-  name: string;
-  /**
    * 찾는 동네.
    *
    * 중개사가 매물을 고를 때 가장 먼저 보는 조건인데 처음 설계에서 빠져 있었다.
@@ -74,14 +66,13 @@ export interface GeneralTerms {
    */
   deposit: string | null;
   rent: string | null;
-  rooms: 'one' | 'two' | null;
+  rooms: 'one' | 'two' | 'three' | null;
   floorPref: 'any' | 'low' | 'high' | null;
   /** 걸어서 갈 수 있으면 좋은 곳 */
   near: string[];
 }
 
 export const emptyTerms = (): GeneralTerms => ({
-  name: '',
   area: '',
   deposit: null,
   rent: null,
@@ -179,6 +170,16 @@ export interface Property {
    * 서버에 올리고 주소를 받아 와야 한다.
    */
   media: Media[];
+  /**
+   * 걸어서 몇 분인지. 판정에는 쓰지 않는다.
+   *
+   * 지적장애인의 주거 연구에서 지역사회 접근성이 삶의 질 변수로 반복 보고된다
+   * (Quesada-Cubo et al. 2025, JARID 73편 체계적 문헌고찰). 다만 몇 분이면
+   * 충분한지에 대한 기준값은 근거가 없어 판정선으로 삼지 않고 그대로 전한다.
+   */
+  stopMin: number | null;
+  storeMin: number | null;
+  hospitalMin: number | null;
   facts: PropertyFacts;
 }
 

@@ -55,6 +55,8 @@ export function Screen({
 }) {
   const { reduceMotion } = useStore();
   const [hintOn, setHintOn] = useState(false);
+  // 아래 버튼 영역의 높이. 안내를 그 위에 띄우려면 얼마나 올려야 하는지 알아야 한다.
+  const [footerH, setFooterH] = useState(0);
   const dismissed = useRef(false);
 
   useEffect(() => {
@@ -93,8 +95,18 @@ export function Screen({
       ) : (
         <View style={[s.flex, s.scrollBody]}>{children}</View>
       )}
-      {scrollHint && !reduceMotion ? <ScrollHint text={scrollHint} visible={hintOn} /> : null}
-      {footer ? <View style={s.footer}>{footer}</View> : null}
+      {footer ? (
+        <View style={s.footer} onLayout={(e) => setFooterH(e.nativeEvent.layout.height)}>
+          {footer}
+        </View>
+      ) : null}
+      {/*
+        버튼 영역보다 뒤에 그린다. 앞에 두면 아래 버튼에 가려 한 번도 안 보인다.
+        움직이는 안내를 꺼 두신 분에게는 띄우지 않는다.
+      */}
+      {scrollHint && !reduceMotion ? (
+        <ScrollHint text={scrollHint} visible={hintOn} bottom={footerH + space.lg} />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -147,6 +159,7 @@ export function AppBar({
             accessibilityLabel="설정. 목소리와 읽는 속도를 바꾸실 수 있어요."
           >
             <Text style={s.gearGlyph}>⚙</Text>
+            <Text style={s.gearText}>설정</Text>
           </Pressable>
         )}
       </View>
@@ -301,11 +314,17 @@ export function SpeakLink({
     <Pressable
       onPress={press}
       hitSlop={12}
-      style={[s.speakLink, tone === 'onPhoto' && s.speakLinkOnPhoto]}
+      style={({ pressed }) => [
+        s.speakLink,
+        tone === 'onPhoto' && s.speakLinkOnPhoto,
+        pressed && (tone === 'onPhoto' ? s.speakOnPhotoPressed : s.speakPressed),
+      ]}
       accessibilityRole="button"
       accessibilityLabel={speaking ? '읽기 멈추기' : label}
     >
-      <Text style={s.speakGlyph}>{speaking ? '❚❚' : '🔊'}</Text>
+      <View style={[s.speakBadge, tone === 'onPhoto' && s.speakBadgeOnPhoto]}>
+        <Text style={s.speakGlyph}>{speaking ? '❚❚' : '🔊'}</Text>
+      </View>
       <Text style={[s.speakText, tone === 'onPhoto' && s.speakTextOnPhoto]}>
         {speaking ? '멈추기' : label}
       </Text>
@@ -392,16 +411,27 @@ const s = StyleSheet.create({
     paddingVertical: 6,
   },
   roleBadgeText: { color: color.onPrimarySoft, fontSize: font.caption, fontFamily: family.extrabold },
+  /*
+   * 설정.
+   *
+   * 톱니 하나만 두었더니 무엇을 여는 것인지 모르고 지나쳤다. 이 앱에서 설정은
+   * 목소리와 읽는 속도를 바꾸는 곳이라 정작 필요한 분이 못 찾으면 안 된다.
+   * 글자를 붙이고 테두리를 둘렀다.
+   */
   gear: {
-    width: HIT,
-    height: HIT,
+    minHeight: HIT,
     marginLeft: space.xs,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: HIT / 2,
+    gap: 4,
+    paddingHorizontal: space.md,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: color.border,
   },
-  gearPressed: { backgroundColor: color.primarySoft },
-  gearGlyph: { fontSize: 21, color: color.textSub },
+  gearPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
+  gearGlyph: { fontSize: 19, color: color.textSub },
+  gearText: { fontSize: font.caption + 1, color: color.textSub, fontFamily: family.bold },
 
   h1: {
     fontSize: font.h1,
@@ -494,25 +524,52 @@ const s = StyleSheet.create({
     ...keepAll,
   },
 
+  /*
+   * 소리로 듣기.
+   *
+   * 글로 읽기 어려운 분에게는 이것이 본문을 여는 유일한 문이다. 그런데
+   * 작은 글씨에 작은 그림 하나로 두었더니 링크처럼 보여 눈에 걸리지 않았다.
+   * '말로 답하기' 버튼과 같은 크기·같은 생김새로 맞춰 한 짝으로 읽히게 했다.
+   */
   speakLink: {
-    minHeight: HIT,
+    alignSelf: 'flex-start',
+    minHeight: TAP_BIG,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    marginTop: space.sm,
+    gap: space.md,
+    marginTop: space.md,
+    paddingLeft: space.sm,
+    paddingRight: space.xl,
+    // 테두리를 둘러 '눌러도 되는 것'으로 읽히게 한다. 그림 하나만 두면
+    // 장식으로 보고 지나친다.
+    borderRadius: radius.chip,
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surface,
   },
-  speakGlyph: { fontSize: font.body, fontFamily: family.regular },
+  speakPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
+  speakOnPhotoPressed: { backgroundColor: 'rgba(20,18,34,0.85)' },
+  speakBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: color.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speakBadgeOnPhoto: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  speakGlyph: { fontSize: 22, fontFamily: family.regular },
   // 사진 위에서는 배경 밝기를 예측할 수 없다. 어두운 알약을 깔아
   // 어떤 사진이 와도 흰 글자의 명도 대비가 기준 아래로 내려가지 않게 고정한다.
   speakLinkOnPhoto: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(20,18,34,0.68)',
     borderRadius: radius.chip,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.sm,
     paddingRight: space.xl,
     marginTop: space.lg,
   },
-  speakText: { color: color.primaryText, fontSize: font.caption + 1, fontFamily: family.bold },
+  speakText: { color: color.primaryText, fontSize: font.label, fontFamily: family.bold, ...keepAll },
   speakTextOnPhoto: { color: '#FFFFFF' },
 
   progressWrap: { marginTop: space.xxl },
@@ -720,7 +777,8 @@ const n = StyleSheet.create({
   sheet: {
     marginTop: space.xl,
     backgroundColor: color.paper,
-    borderRadius: 4,
+    // 종이 모서리. 각지면 딱딱하고 많이 둥글면 종이가 아니라 카드로 보인다.
+    borderRadius: 12,
     overflow: 'hidden',
     // 종이에는 테두리가 없다. 얹혀 있는 느낌만 그림자로 만든다.
     shadowColor: '#2A2416',

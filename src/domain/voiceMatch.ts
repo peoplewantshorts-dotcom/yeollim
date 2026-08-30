@@ -99,7 +99,18 @@ export const ACCEPT = 0.62;
 export const AMBIGUOUS_GAP = 0.09;
 
 function scoreOne(said: string, choice: VoiceChoice): number {
-  const words = [choice.label, ...(choice.keywords ?? [])];
+  /*
+   * 숫자가 들어간 라벨은 맞춰보는 데 쓰지 않는다.
+   *
+   * '100~300만원'과 '300~500만원'은 숫자를 걷어내면 둘 다 '만원'만 남는다.
+   * 그러면 "사백만원"이라고 말했을 때 모든 구간이 똑같이 들어맞는 것으로 나와
+   * 앞에 있는 것이 뽑힌다. 구간을 가르는 것은 숫자인데 그 숫자를 못 읽으니
+   * 라벨로는 판단할 수 없다. 이런 선택지는 미리 적어 둔 말버릇으로만 맞춘다.
+   */
+  const labelHasDigits = /\d/.test(choice.label);
+  const words = labelHasDigits
+    ? (choice.keywords ?? [])
+    : [choice.label, ...(choice.keywords ?? [])];
   const saidN = normalize(said);
   const saidJ = toJamo(said);
   if (!saidN) return 0;
@@ -109,10 +120,21 @@ function scoreOne(said: string, choice: VoiceChoice): number {
     const wN = normalize(w);
     if (!wN) continue;
 
-    // 그대로 들어 있으면 확실하다
+    /*
+     * 그대로 들어 있으면 확실하다 — 다만 길이가 비슷할 때만.
+     *
+     * '사백만원' 안에는 '백만원'이 들어 있다. 글자만 보면 100~300 구간에
+     * 들어맞지만 실제로 말한 값은 400이다. 짧은 조각이 우연히 박혀 있는 것을
+     * 확신으로 치면 앞 구간이 늘 이긴다. 짧은 쪽이 긴 쪽의 대부분을 차지할 때만
+     * 확실한 것으로 본다. 나머지는 아래에서 닮은 정도로 따진다.
+     */
     if (saidN.includes(wN) || wN.includes(saidN)) {
-      best = Math.max(best, 1);
-      continue;
+      const shorter = Math.min(saidN.length, wN.length);
+      const longer = Math.max(saidN.length, wN.length);
+      if (shorter / longer >= 0.8) {
+        best = Math.max(best, 1);
+        continue;
+      }
     }
 
     // 자모로 풀어 닮은 정도를 본다
