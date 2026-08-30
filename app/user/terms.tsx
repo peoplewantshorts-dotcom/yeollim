@@ -21,10 +21,13 @@ import {
   RENT_BANDS,
   FLOOR_OPTIONS,
   ROOM_OPTIONS,
+  bandsInRange,
+  spokenWithChoices,
   suggestAreas,
   voiceChoicesFor,
 } from '../../src/domain/questions';
 import { emptyTerms, type GeneralTerms } from '../../src/domain/types';
+import { parseMoneyRange } from '../../src/domain/koreanNumber';
 import { useStore } from '../../src/store';
 import { color, family, font, keepAll, radius, space, TAP_BIG, TAP_GAP } from '../../src/theme';
 
@@ -79,6 +82,13 @@ export default function TermsScreen() {
 
   const set = <K extends keyof GeneralTerms>(key: K, value: GeneralTerms[K]) =>
     setTerms((t) => ({ ...t, [key]: value }));
+
+  /** 여러 개 고를 수 있는 항목을 켜고 끈다. */
+  const toggleIn = (key: 'deposit' | 'rent', id: string) =>
+    setTerms((t) => ({
+      ...t,
+      [key]: t[key].includes(id) ? t[key].filter((x) => x !== id) : [...t[key], id],
+    }));
 
   const toggleNear = (id: string) =>
     setTerms((t) => ({
@@ -136,16 +146,22 @@ export default function TermsScreen() {
       <Card>
         <Text style={s.q}>보증금은 얼마쯤 생각하세요?</Text>
         <View style={s.tagRow}>
-          {DEPOSIT_BANDS.map((b) => (
+          {DEPOSIT_BANDS.map((b, i) => (
             <Tag
               key={b.id}
+              wide
+              index={i + 1}
               label={b.label}
-              on={terms.deposit === b.id}
-              onPress={() => set('deposit', terms.deposit === b.id ? null : b.id)}
+              on={terms.deposit.includes(b.id)}
+              onPress={() => toggleIn('deposit', b.id)}
             />
           ))}
         </View>
         <View style={s.actions}>
+          <SpeakLink
+            text={spokenWithChoices('보증금은 얼마쯤 생각하세요?', DEPOSIT_BANDS.map((x) => x.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => setSpeaking('deposit')} />
         </View>
       </Card>
@@ -153,16 +169,22 @@ export default function TermsScreen() {
       <Card>
         <Text style={s.q}>월세는요?</Text>
         <View style={s.tagRow}>
-          {RENT_BANDS.map((b) => (
+          {RENT_BANDS.map((b, i) => (
             <Tag
               key={b.id}
+              wide
+              index={i + 1}
               label={b.label}
-              on={terms.rent === b.id}
-              onPress={() => set('rent', terms.rent === b.id ? null : b.id)}
+              on={terms.rent.includes(b.id)}
+              onPress={() => toggleIn('rent', b.id)}
             />
           ))}
         </View>
         <View style={s.actions}>
+          <SpeakLink
+            text={spokenWithChoices('월세는요?', RENT_BANDS.map((x) => x.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => setSpeaking('rent')} />
         </View>
       </Card>
@@ -170,9 +192,10 @@ export default function TermsScreen() {
       <Card>
         <Text style={s.q}>방은 몇 개면 좋으세요?</Text>
         <View style={s.tagRow}>
-          {ROOM_OPTIONS.map((o) => (
+          {ROOM_OPTIONS.map((o, i) => (
             <Tag
               key={o.id}
+              index={i + 1}
               label={o.label}
               on={terms.rooms === o.id}
               onPress={() =>
@@ -182,6 +205,10 @@ export default function TermsScreen() {
           ))}
         </View>
         <View style={s.actions}>
+          <SpeakLink
+            text={spokenWithChoices('방은 몇 개면 좋으세요?', ROOM_OPTIONS.map((x) => x.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => setSpeaking('rooms')} />
         </View>
       </Card>
@@ -189,9 +216,10 @@ export default function TermsScreen() {
       <Card>
         <Text style={s.q}>몇 층이 좋으세요?</Text>
         <View style={s.tagRow}>
-          {FLOOR_OPTIONS.map((o) => (
+          {FLOOR_OPTIONS.map((o, i) => (
             <Tag
               key={o.id}
+              index={i + 1}
               label={o.label}
               on={terms.floorPref === o.id}
               onPress={() =>
@@ -201,6 +229,10 @@ export default function TermsScreen() {
           ))}
         </View>
         <View style={s.actions}>
+          <SpeakLink
+            text={spokenWithChoices('몇 층이 좋으세요?', FLOOR_OPTIONS.map((x) => x.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => setSpeaking('floor')} />
         </View>
       </Card>
@@ -209,17 +241,22 @@ export default function TermsScreen() {
         <Text style={s.q}>걸어서 갈 수 있으면 좋은 곳이 있으세요?</Text>
         <Sub>여러 개 고르셔도 돼요</Sub>
         <View style={s.tagRow} accessibilityRole="list">
-          {NEAR_OPTIONS.map((o) => (
+          {NEAR_OPTIONS.map((o, i) => (
             <Tag
               key={o.id}
               label={o.label}
               wide
+              index={i + 1}
               on={terms.near.includes(o.id)}
               onPress={() => toggleNear(o.id)}
             />
           ))}
         </View>
         <View style={s.actions}>
+          <SpeakLink
+            text={spokenWithChoices('걸어서 갈 수 있으면 좋은 곳이 있으세요?', NEAR_OPTIONS.map((x) => x.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => setSpeaking('near')} />
         </View>
       </Card>
@@ -229,7 +266,8 @@ export default function TermsScreen() {
         <VoiceAnswer
           visible
           title={VOICE_TITLE[speaking]}
-          freeText={speaking === 'area'}
+          freeText={speaking === 'area' || speaking === 'deposit' || speaking === 'rent'}
+          multi={speaking === 'near'}
           choices={
             speaking === 'deposit'
               ? voiceChoicesFor(DEPOSIT_BANDS)
@@ -243,8 +281,13 @@ export default function TermsScreen() {
           }
           onPick={(id) => {
             if (speaking === 'area') set('area', id);
-            else if (speaking === 'deposit') set('deposit', id);
-            else if (speaking === 'rent') set('rent', id);
+            else if (speaking === 'deposit' || speaking === 'rent') {
+              // "100만 원에서 500만 원" 처럼 범위로 말하면 걸치는 구간을 전부 켠다.
+              const range = parseMoneyRange(id);
+              if (!range) return;
+              const bands = speaking === 'deposit' ? DEPOSIT_BANDS : RENT_BANDS;
+              set(speaking, bandsInRange(bands, range));
+            }
             else if (speaking === 'rooms') set('rooms', id as GeneralTerms['rooms']);
             else if (speaking === 'floor') set('floorPref', id as GeneralTerms['floorPref']);
             else toggleNear(id);
@@ -261,12 +304,20 @@ function Tag({
   on,
   onPress,
   wide,
+  index,
 }: {
   label: string;
   on: boolean;
   onPress: () => void;
   /** 한 줄을 통째로 쓰는 항목. 글이 길어 두 칸으로 나누면 줄이 접힌다. */
   wide?: boolean;
+  /**
+   * 화면에 붙는 번호.
+   *
+   * 소리로 들으실 때 '세 번째 것'이라고 짚을 수 있어야 한다. 읽어주는 문장과
+   * 화면의 번호가 같아야 그게 가능하다.
+   */
+  index?: number;
 }) {
   const press = useSteadyPress(onPress);
   return (
@@ -276,8 +327,9 @@ function Tag({
       accessibilityRole="checkbox"
       accessibilityState={{ checked: on }}
       aria-checked={on}
-      accessibilityLabel={label}
+      accessibilityLabel={index ? `${index}번, ${label}` : label}
     >
+      {index ? <Text style={[s.tagNo, on && s.tagTextOn]}>{index}</Text> : null}
       <Text style={[s.tagText, on && s.tagTextOn]}>{label}</Text>
     </Pressable>
   );
@@ -314,16 +366,19 @@ const s = StyleSheet.create({
     flexGrow: 1,
     flexBasis: '44%',
     minHeight: TAP_BIG,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space.md,
     paddingHorizontal: space.lg,
     borderRadius: radius.chip,
     borderWidth: 2,
     borderColor: color.border,
     backgroundColor: color.surface,
   },
-  tagWide: { flexBasis: '100%', alignItems: 'flex-start', paddingHorizontal: space.xl },
+  tagWide: { flexBasis: '100%', justifyContent: 'flex-start', paddingHorizontal: space.xl },
   tagOn: { borderColor: color.primary, backgroundColor: color.primarySoft },
-  tagText: { fontSize: font.label, fontFamily: family.bold, color: color.textSub, textAlign: 'center' },
+  tagText: { fontSize: font.label, fontFamily: family.bold, color: color.textSub, ...keepAll },
+  tagNo: { fontSize: font.caption + 1, fontFamily: family.extrabold, color: color.textMuted, minWidth: 16 },
   tagTextOn: { color: color.onPrimarySoft },
 });

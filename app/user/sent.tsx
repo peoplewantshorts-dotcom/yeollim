@@ -12,7 +12,7 @@ import {
   Sub,
 } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { color, family, font, radius, space } from '../../src/theme';
+import { color, family, font, keepAll, radius, space } from '../../src/theme';
 
 /**
  * 요청서를 보낸 뒤의 화면.
@@ -55,8 +55,7 @@ export default function SentScreen() {
       </View>
 
       <H1 style={s.big}>
-        요청서를{BR}
-        <Accent>보냈어요</Accent>
+        매물 요청서를 <Accent>보냈어요</Accent>
       </H1>
       <Sub>
         중개사가 매물을 확인하고{'\n'}
@@ -95,8 +94,18 @@ export default function SentScreen() {
 const BR = String.fromCharCode(10);
 
 const s = StyleSheet.create({
-  // 오른쪽에 여백이 크게 남아 제목을 한 단계 키웠다. 멀리서도 읽힌다.
-  big: { fontSize: font.display, lineHeight: font.display * 1.28 },
+  // 한 줄에 들어가는 크기로 잡았다. 두 줄로 접히면 '요청서를 / 보냈어요'가 되어
+  // 무엇을 보냈는지가 흩어진다.
+  big: { fontSize: font.h1, lineHeight: font.h1 * 1.35 },
+  // 이 화면에서 실제로 읽어야 하는 문장이라 본문보다 크게 잡았다.
+  lead: {
+    marginTop: space.md,
+    fontSize: font.h2,
+    lineHeight: font.h2 * 1.5,
+    color: color.textSub,
+    fontFamily: family.semibold,
+    ...keepAll,
+  },
   mark: {
     width: 56,
     height: 56,

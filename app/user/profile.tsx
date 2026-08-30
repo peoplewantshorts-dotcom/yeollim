@@ -19,6 +19,7 @@ import {
   deriveRequirements,
   MOBILITY_ECHO,
   MOBILITY_Q,
+  spokenWithChoices,
   voiceChoicesFor,
   type ProfileQuestion,
 } from '../../src/domain/questions';
@@ -104,17 +105,18 @@ export default function ProfileScreen() {
         <Accent>두세 가지</Accent>만 여쭤볼게요
       </H1>
       <SpeakLink
-        text="맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다. 시간 제한은 없어요."
+        text="맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다."
         label="질문을 소리로 들으실 수 있어요"
       />
 
       <Card>
         <Text style={s.qTitle}>{MOBILITY_Q.title}</Text>
         <PickList label={MOBILITY_Q.title}>
-          {MOBILITY_Q.choices.map((c) => (
+          {MOBILITY_Q.choices.map((c, i) => (
             <PickCard
               key={c.id}
               label={c.label}
+              index={i + 1}
               image={AID_IMAGE[c.id]}
               selected={mobility === c.id}
               onPress={() => setMobility(c.id as MobilityId)}
@@ -123,7 +125,10 @@ export default function ProfileScreen() {
           ))}
         </PickList>
         <View style={s.actions}>
-          <SpeakLink text={MOBILITY_Q.title} label="들어보기" />
+          <SpeakLink
+            text={spokenWithChoices(MOBILITY_Q.title, MOBILITY_Q.choices.map((c) => c.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => openVoice('mobility')} />
         </View>
       </Card>
@@ -131,10 +136,11 @@ export default function ProfileScreen() {
       <Card>
         <Text style={s.qTitle}>{CONTACT_Q.title}</Text>
         <PickList label={CONTACT_Q.title}>
-          {CONTACT_Q.choices.map((c) => (
+          {CONTACT_Q.choices.map((c, i) => (
             <PickCard
               key={c.id}
               label={c.label}
+              index={i + 1}
               selected={contact === c.id}
               onPress={() => setContact(c.id)}
               a11yLabel={`${CONTACT_Q.title} ${c.label}`}
@@ -142,7 +148,10 @@ export default function ProfileScreen() {
           ))}
         </PickList>
         <View style={s.actions}>
-          <SpeakLink text={CONTACT_Q.title} label="들어보기" />
+          <SpeakLink
+            text={spokenWithChoices(CONTACT_Q.title, CONTACT_Q.choices.map((c) => c.label))}
+            label="들어보기"
+          />
           <VoiceButton onPress={() => openVoice('contact')} />
         </View>
       </Card>

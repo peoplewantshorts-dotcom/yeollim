@@ -129,10 +129,10 @@ export function AppBar({
   });
   return (
     <View style={s.appBar}>
-      {/* 제목은 가운데 고정, 뒤로 버튼은 왼쪽에서 제 폭을 다 쓴다 */}
-      <Text style={s.appBarTitle} accessibilityRole="header" numberOfLines={1}>
-        {title}
-      </Text>
+      {/*
+        제목을 화면 가운데에 절대 위치로 두었더니 좁은 화면에서 오른쪽 배지와
+        겹쳐 글자가 잘렸다. 세 칸으로 나누고 가운데 칸이 남는 만큼만 쓰게 한다.
+      */}
       <View style={s.appBarRow}>
         <Pressable
           onPress={back}
@@ -144,7 +144,14 @@ export function AppBar({
           <Text style={s.backGlyph}>‹</Text>
           <Text style={s.backLabel}>뒤로</Text>
         </Pressable>
-        <View style={s.appBarSpacer} />
+        <Text
+          style={s.appBarTitle}
+          accessibilityRole="header"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {title}
+        </Text>
         {badge ? (
           <View style={s.roleBadge}>
             <Text style={s.roleBadgeText}>{badge}</Text>
@@ -376,12 +383,9 @@ const s = StyleSheet.create({
     backgroundColor: color.surface,
     marginBottom: space.xl,
   },
-  appBarRow: { flexDirection: 'row', alignItems: 'center' },
-  appBarSpacer: { flex: 1 },
+  appBarRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   appBarTitle: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
     fontSize: font.h2,
     fontFamily: family.extrabold,
@@ -602,12 +606,15 @@ export function PickCard({
   selected,
   onPress,
   a11yLabel,
+  index,
 }: {
   label: string;
   image?: number;
   selected: boolean;
   onPress: () => void;
   a11yLabel?: string;
+  /** 화면에 붙는 번호. 읽어주는 문장의 번호와 같아야 짚을 수 있다. */
+  index?: number;
 }) {
   const press = useSteadyPress(onPress);
   return (
@@ -617,8 +624,9 @@ export function PickCard({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected, selected }}
       aria-checked={selected}
-      accessibilityLabel={a11yLabel ?? label}
+      accessibilityLabel={index ? `${index}번, ${a11yLabel ?? label}` : (a11yLabel ?? label)}
     >
+      {index ? <Text style={[p.no, selected && p.labelOn]}>{index}</Text> : null}
       {image ? (
         <View style={p.thumbWrap}>
           <Image source={image} style={p.thumb} resizeMode="contain" />
@@ -672,6 +680,7 @@ const p = StyleSheet.create({
   },
   thumb: { width: 64, height: 64 },
   thumbEmpty: { width: 0, height: 64 },
+  no: { fontSize: font.caption + 1, fontFamily: family.extrabold, color: color.textMuted, minWidth: 14 },
   label: {
     flex: 1,
     fontSize: font.label,
@@ -700,10 +709,9 @@ const p = StyleSheet.create({
  * 요청서와 판정 카드는 앱이 뱉어낸 결과가 아니라 사람이 적어 둔 기록으로 읽혀야 한다.
  * 중개사에게 건네는 문서이고, 당사자가 다시 꺼내 보는 기록이기도 하다.
  *
- * 진짜 종이처럼 보이게 하는 것은 장식이 아니라 줄과 글자의 관계다.
- * 줄을 그어 놓고 글자가 그 위에 앉지 않으면 그 순간 가짜가 된다.
- * 그래서 줄 간격(RULE)과 본문 행간을 같은 값으로 묶고, 첫 줄이 시작하는 높이도
- * 같은 값에서 끌어온다. 아래 noteText 를 쓰는 한 글자는 줄에서 벗어나지 않는다.
+ * 처음에는 공책처럼 줄을 그었는데 칸이 닫혀 표처럼 읽혔다. 종이라는 느낌은
+ * 줄에서 나오는 것이 아니라 색과 여백, 그리고 얹혀 있는 그림자에서 나온다.
+ * 줄은 걷어내고 행간만 넉넉히 남겼다.
  *
  * 넓은 행간은 덤이 아니다. 저시력·인지 특성에서 줄 간격이 좁으면 읽던 줄을 놓친다.
  * ------------------------------------------------------------------ */
@@ -741,13 +749,6 @@ export function NoteSheet({
 }) {
   return (
     <View style={[n.sheet, style]}>
-      {/* 공책 줄. 카드 높이를 모르므로 넉넉히 긋고 넘치는 것은 잘라 낸다. */}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        {Array.from({ length: 24 }).map((_, i) => (
-          <View key={i} style={[n.rule, { top: NOTE_PAD_TOP + RULE * (i + 1) }]} />
-        ))}
-      </View>
-
       {edge ? <View pointerEvents="none" style={[n.edge, { backgroundColor: edge }]} /> : null}
 
       <View style={n.body}>{children}</View>
@@ -758,17 +759,27 @@ export function NoteSheet({
 /** 노트 한 줄. 앞에 붙는 표는 글자와 같은 줄에 앉는다. */
 export function NoteLine({
   text,
-  mark = '·',
+  mark = '✓',
   strong,
+  /**
+   * 형광펜.
+   *
+   * 종이에서 중요한 줄을 표시하는 가장 익숙한 방법이다. 색으로만 나누지 않도록
+   * 앞의 체크 표시와 함께 쓴다 — 색을 못 보셔도 체크는 보인다.
+   */
+  highlight,
 }: {
   text: string;
   mark?: string;
   strong?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <View style={n.line} accessible accessibilityLabel={text}>
       <Text style={[noteText, n.mark]}>{mark}</Text>
-      <Text style={[noteText, strong && n.strong]}>{text}</Text>
+      <View style={highlight ? n.hi : undefined}>
+        <Text style={[noteText, (strong || highlight) && n.strong]}>{text}</Text>
+      </View>
     </View>
   );
 }
@@ -788,16 +799,18 @@ const n = StyleSheet.create({
     elevation: 3,
   },
   // 줄은 마진선 안쪽에서만 긋는다. 끝까지 그으면 칸이 닫혀 표처럼 읽힌다.
-  rule: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: color.paperRule },
+
   edge: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 6 },
   body: {
-    paddingTop: NOTE_PAD_TOP - RULE + 8,
+    paddingTop: space.xxl,
     paddingLeft: space.xxl,
     paddingRight: space.xxl,
-    paddingBottom: RULE - 8,
+    paddingBottom: space.xxl,
   },
 
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
-  mark: { width: 14, color: color.paperInkSub },
+  mark: { width: 18, color: color.primaryText },
+  // 아주 연한 노랑. 형광펜으로 그은 자리처럼만 보이게 한다.
+  hi: { backgroundColor: '#FBF3D9', borderRadius: 4, paddingHorizontal: space.sm },
   strong: { fontFamily: family.bold },
 });

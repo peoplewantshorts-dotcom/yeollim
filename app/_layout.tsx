@@ -81,9 +81,14 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: color.bg },
+              /*
+               * 화면이 옆으로 탁 밀려 나가면 끊긴 느낌이 든다. 특히 화면 하나에
+               * 오래 머무는 이 앱에서는 그 단절이 크게 느껴진다. 스며들 듯 바뀌게 둔다.
+               */
+              animation: 'fade',
+              animationDuration: 420,
               // 옆으로 밀어 뒤로 가기. 손이 화면 위쪽까지 닿지 않는 사용자에게는
               // 버튼보다 제스처가 훨씬 편한 경로다.
-              animation: 'slide_from_right',
               gestureEnabled: true,
               gestureDirection: 'horizontal',
             }}

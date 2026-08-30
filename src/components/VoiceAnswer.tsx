@@ -34,6 +34,21 @@ import { color, family, font, HIT, radius, space, TAP_BIG } from '../theme';
 
 type Phase = 'listening' | 'confirm' | 'choose' | 'unclear' | 'blocked';
 
+/*
+ * 기다리는 시간.
+ *
+ * 인식기는 잠깐만 조용해도 끝난 줄 알고 닫아 버린다. 그런데 말이 느린 분,
+ * 숨을 고르고 다시 말하는 분, 무슨 말을 할지 잠시 생각하는 분에게는 그 잠깐이
+ * 늘 있는 일이다. 닫아 놓고 "못 알아들었어요"라고 하면 두 번 상처가 된다.
+ *
+ *  PAUSE_MS  말을 하다 멈춘 뒤 이만큼 더 기다렸다가 마무리한다
+ *  QUIET_MS  한 마디도 없을 때 여기까지 기다린다
+ *  REOPENS   인식기가 먼저 닫아 버리면 조용히 다시 연다 (최대 이 횟수)
+ */
+const PAUSE_MS = 3500;
+const QUIET_MS = 20000;
+const REOPENS = 3;
+
 export function VoiceAnswer({
   title,
   choices,
@@ -41,6 +56,7 @@ export function VoiceAnswer({
   onClose,
   visible,
   freeText,
+  multi,
 }: {
   /** 무엇을 묻는 중인지. 화면 위에 다시 보여준다. */
   title: string;
@@ -54,14 +70,35 @@ export function VoiceAnswer({
    * 확인을 받는다 — 잘못 들은 채로 요청서에 실리는 것을 막는 규칙은 똑같다.
    */
   freeText?: boolean;
+  /**
+   * 여러 개 고를 수 있는 질문.
+   *
+   * "정류장이랑 병원도 있으면 좋겠어요"처럼 한 번에 둘을 말하는 일이 흔하다.
+   * 그런데 하나만 고르게 하면 나머지는 다시 말해야 한다. 들린 것을 한꺼번에
+   * 고를 수 있는 길을 열어 둔다.
+   */
+  multi?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>('listening');
   const [heard, setHeard] = useState('');
   const [ranked, setRanked] = useState<VoiceMatch[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const running = useRef(false);
+  // 지금까지 받아 적힌 후보. 마무리할 때 이것으로 판단한다.
+  const alts = useRef<string[]>([]);
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quietTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reopens = useRef(0);
+
+  const clearTimers = useCallback(() => {
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    if (quietTimer.current) clearTimeout(quietTimer.current);
+    pauseTimer.current = null;
+    quietTimer.current = null;
+  }, []);
 
   const stop = useCallback(() => {
+    clearTimers();
     if (!running.current) return;
     running.current = false;
     try {
@@ -69,13 +106,45 @@ export function VoiceAnswer({
     } catch {
       // 이미 멈춰 있으면 그만이다
     }
-  }, []);
+  }, [clearTimers]);
+
+  /** 지금까지 들은 것으로 마무리한다. 한 마디도 없으면 못 알아들은 것이다. */
+  const settle = useCallback(() => {
+    clearTimers();
+    running.current = false;
+    try {
+      ExpoSpeechRecognitionModule.stop();
+    } catch {
+      // 이미 멈춰 있으면 그만이다
+    }
+
+    const said = alts.current.filter(Boolean);
+    if (!said.length) {
+      setPhase('unclear');
+      return;
+    }
+
+    // 받아쓰기는 맞춰볼 후보가 없다. 들은 말을 그대로 보여드리고 확인만 받는다.
+    if (freeText) {
+      const one = said[0].trim();
+      setRanked(one ? [{ id: one, label: one, score: 1 }] : []);
+      setPhase(one ? 'confirm' : 'unclear');
+      return;
+    }
+
+    const m = matchVoice(said, choices);
+    setRanked(m.ranked);
+    setPhase(m.action === 'confirm' ? 'confirm' : m.action === 'choose' ? 'choose' : 'unclear');
+  }, [choices, freeText, clearTimers]);
 
   const listen = useCallback(async () => {
     setHeard('');
     setRanked([]);
     setProblem(null);
     setPhase('listening');
+    alts.current = [];
+    reopens.current = 0;
+    clearTimers();
     try {
       const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!perm.granted) {
@@ -91,13 +160,21 @@ export function VoiceAnswer({
         maxAlternatives: 5,
         // 어떤 말이 나올지 미리 귀띔한다. 발음이 흐려도 훨씬 잘 잡는다.
         contextualStrings: freeText ? [] : biasingStrings(choices),
-        continuous: false,
+        // 스스로 끊지 않게 두고, 언제 마무리할지는 우리가 정한다.
+        continuous: true,
+        androidIntentOptions: {
+          EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 6000,
+          EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: PAUSE_MS,
+          EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: PAUSE_MS,
+        },
       });
+      // 한 마디도 없이 이만큼 지나면 그만 기다린다.
+      quietTimer.current = setTimeout(settle, QUIET_MS);
     } catch {
       setProblem('이 기기에서는 음성 인식을 쓸 수 없어요. 손으로 골라주세요.');
       setPhase('blocked');
     }
-  }, [choices]);
+  }, [choices, freeText, settle, clearTimers]);
 
   useEffect(() => {
     if (visible) listen();
@@ -106,45 +183,61 @@ export function VoiceAnswer({
   }, [visible, listen, stop]);
 
   useSpeechRecognitionEvent('result', (e) => {
-    const alts = e.results.map((r) => r.transcript).filter(Boolean);
-    if (alts[0]) setHeard(alts[0]);
-    if (!e.isFinal) return;
+    const said = e.results.map((r) => r.transcript).filter(Boolean);
+    if (!said.length) return;
 
-    running.current = false;
+    alts.current = said;
+    setHeard(said[0]);
 
-    // 받아쓰기는 맞춰볼 후보가 없다. 들은 말을 그대로 보여드리고 확인만 받는다.
-    if (freeText) {
-      const said = alts[0]?.trim() ?? '';
-      setRanked(said ? [{ id: said, label: said, score: 1 }] : []);
-      setPhase(said ? 'confirm' : 'unclear');
-      return;
-    }
-
-    const m = matchVoice(alts, choices);
-    setRanked(m.ranked);
-    setPhase(m.action === 'confirm' ? 'confirm' : m.action === 'choose' ? 'choose' : 'unclear');
+    // 말이 이어지는 동안에는 마무리하지 않는다. 멈춘 뒤부터 다시 센다.
+    clearTimers();
+    pauseTimer.current = setTimeout(settle, PAUSE_MS);
   });
 
   useSpeechRecognitionEvent('error', (e) => {
-    running.current = false;
-    // 아무 말도 안 들린 것은 오류가 아니라 흔한 일이다. 같은 화면으로 안내한다.
-    if (e.error === 'no-speech' || e.error === 'speech-timeout') {
-      setPhase('unclear');
-      return;
-    }
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      running.current = false;
+      clearTimers();
       setProblem('마이크를 쓸 수 있게 허용해 주셔야 말로 답할 수 있어요.');
       setPhase('blocked');
       return;
     }
+    // 아무 말도 안 들린 것은 오류가 아니라 흔한 일이다. 그냥 계속 기다린다.
+    if (e.error === 'no-speech' || e.error === 'speech-timeout') return;
+
+    running.current = false;
+    clearTimers();
     setProblem('소리를 듣는 데 문제가 생겼어요. 손으로 골라주셔도 돼요.');
     setPhase('blocked');
   });
 
   useSpeechRecognitionEvent('end', () => {
     running.current = false;
-    // 결과 없이 끝났으면 못 알아들은 것이다
-    setPhase((p) => (p === 'listening' ? 'unclear' : p));
+    if (phase !== 'listening') return;
+
+    // 들은 것이 있으면 그것으로 마무리한다.
+    if (alts.current.length) {
+      settle();
+      return;
+    }
+    // 아직 한 마디도 못 들었는데 인식기가 먼저 닫았다. 조용히 다시 연다.
+    if (reopens.current < REOPENS) {
+      reopens.current += 1;
+      try {
+        running.current = true;
+        ExpoSpeechRecognitionModule.start({
+          lang: 'ko-KR',
+          interimResults: true,
+          maxAlternatives: 5,
+          contextualStrings: freeText ? [] : biasingStrings(choices),
+          continuous: true,
+        });
+      } catch {
+        settle();
+      }
+      return;
+    }
+    settle();
   });
 
   const take = useSteadyPress((id: string) => {
@@ -204,16 +297,30 @@ export function VoiceAnswer({
 
           {phase === 'choose' ? (
             <>
-              <Text style={s.big}>어느 쪽인가요?</Text>
-              <Text style={s.calm}>비슷하게 들려서 확인이 필요해요</Text>
+              <Text style={s.big}>{multi ? '이 중에 고를까요?' : '어느 쪽인가요?'}</Text>
+              <Text style={s.calm}>
+                {multi ? '여러 개 고르셔도 돼요' : '비슷하게 들려서 확인이 필요해요'}
+              </Text>
               {heard ? <Text style={s.raw}>말씀하신 것: “{heard}”</Text> : null}
               <View style={s.gap} />
-              {ranked.slice(0, 2).map((r) => (
+              {multi && ranked.length > 1 ? (
+                <View style={s.gapSm}>
+                  <PrimaryButton
+                    label={`${Math.min(ranked.length, 3)}개 모두 고를래요`}
+                    onPress={() => {
+                      stop();
+                      ranked.slice(0, 3).forEach((r) => onPick(r.id));
+                      onClose();
+                    }}
+                  />
+                </View>
+              ) : null}
+              {ranked.slice(0, multi ? 3 : 2).map((r) => (
                 <View key={r.id} style={s.gapSm}>
                   <PrimaryButton label={r.label} onPress={() => take(r.id)} />
                 </View>
               ))}
-              <GhostButton label="둘 다 아니에요, 다시 말할래요" onPress={retry} />
+              <GhostButton label={multi ? '아니에요, 다시 말할래요' : '둘 다 아니에요, 다시 말할래요'} onPress={retry} />
               <GhostButton label="손으로 고를래요" onPress={byHand} />
             </>
           ) : null}

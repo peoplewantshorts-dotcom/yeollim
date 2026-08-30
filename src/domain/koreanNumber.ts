@@ -109,3 +109,30 @@ export function parseKoreanNumber(said: string): number | null {
   const stripped = text.replace(/센티미터|센티|센치|밀리|칸|개|층|만원|원|정도|쯤|요|입니다|이에요|예요|에요/g, '');
   return readSino(stripped);
 }
+
+/**
+ * 말한 금액에서 범위를 읽는다.
+ *
+ * "100만 원에서 500만 원 사이" 처럼 범위로 말하는 것이 실제에 가깝다.
+ * 예산은 하나로 딱 떨어지지 않기 때문이다. 한쪽만 말하면 그 값 하나로 본다.
+ *
+ * 단위는 만원. 못 읽으면 null 을 돌려주고, 화면은 아무것도 고르지 않는다.
+ */
+export function parseMoneyRange(said: string): { min: number; max: number } | null {
+  const text = said.replace(/\s+/g, '');
+  if (!text) return null;
+
+  // 숫자로 받아 적힌 것이 가장 흔하다. 만원 단위로 말한 값을 그대로 쓴다.
+  const digits = text.match(/\d+/g);
+  if (digits && digits.length) {
+    const ns = digits.map(Number).sort((a, b) => a - b);
+    return { min: ns[0], max: ns[ns.length - 1] };
+  }
+
+  // "삼백에서 오백" 처럼 한자어로 말한 경우
+  const parts = text.split(/에서|부터|~|,/).filter(Boolean);
+  const ns = parts.map(parseKoreanNumber).filter((n): n is number => n !== null);
+  if (!ns.length) return null;
+  ns.sort((a, b) => a - b);
+  return { min: ns[0], max: ns[ns.length - 1] };
+}

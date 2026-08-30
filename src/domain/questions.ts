@@ -173,6 +173,46 @@ const BAND_LABEL: Record<string, string> = Object.fromEntries(
   [...DEPOSIT_BANDS, ...RENT_BANDS].map((b) => [b.id, b.label]),
 );
 
+/** 구간이 실제로 가리키는 값의 범위 (만원). 말한 금액을 구간에 맞출 때 쓴다. */
+const BAND_RANGE: Record<string, [number, number]> = {
+  d0: [0, 0],
+  d100: [100, 300],
+  d300: [300, 500],
+  d500: [500, 1000],
+  d1000: [1000, 2000],
+  d2000: [2000, Number.POSITIVE_INFINITY],
+  r0: [0, 0],
+  r20: [0, 20],
+  r2030: [20, 30],
+  r3040: [30, 40],
+  r4050: [40, 50],
+  r50: [50, Number.POSITIVE_INFINITY],
+};
+
+/**
+ * 말한 금액 범위에 걸치는 구간을 전부 돌려준다.
+ *
+ * "100만 원에서 500만 원 사이"라고 하면 100~300 과 300~500 이 함께 켜져야 한다.
+ * 한 값만 말했는데 그 값이 두 구간의 경계면(예: 300만원) 역시 둘 다 켠다 —
+ * 어느 쪽인지 우리가 정할 일이 아니고, 둘 다 보겠다는 뜻으로 받는 편이 맞다.
+ */
+export function bandsInRange(
+  bands: { id: string }[],
+  range: { min: number; max: number },
+): string[] {
+  return bands
+    .filter(({ id }) => {
+      const r = BAND_RANGE[id];
+      if (!r) return false;
+      const [lo, hi] = r;
+      // 값 하나만 말한 경우에는 그 값을 품는 구간
+      if (range.min === range.max) return lo <= range.min && range.min <= hi;
+      // 범위로 말한 경우에는 겹치는 구간
+      return lo < range.max && hi > range.min;
+    })
+    .map((b) => b.id);
+}
+
 /**
  * 동네 이름 추천 목록.
  *
@@ -229,9 +269,10 @@ export function termLines(t: GeneralTerms | undefined | null): string[] {
   if (!t) return [];
   const out: string[] = [];
   if (t.area.trim()) out.push(`${t.area.trim()}에서 찾고 있어요`);
+  const band = (ids: string[]) => ids.map((id) => BAND_LABEL[id] ?? id).join(', ');
   const money = [
-    t.deposit ? `보증금 ${BAND_LABEL[t.deposit] ?? t.deposit}` : '',
-    t.rent ? `월세 ${BAND_LABEL[t.rent] ?? t.rent}` : '',
+    t.deposit?.length ? `보증금 ${band(t.deposit)}` : '',
+    t.rent?.length ? `월세 ${band(t.rent)}` : '',
   ].filter(Boolean);
   if (money.length) out.push(money.join(' · '));
   if (t.rooms === 'one') out.push('원룸이면 돼요');
@@ -304,6 +345,23 @@ const VOICE_WORDS: Record<string, string[]> = {
   yes: ['있어요', '있습니다', '네', '있음', '예'],
   no: ['없어요', '없습니다', '아니요', '없음', '아니'],
 };
+
+/**
+ * 질문과 선택지를 함께 읽어주는 문장.
+ *
+ * 질문만 읽어주면 무엇을 고를 수 있는지 모른 채 화면을 더듬게 된다.
+ * 눈으로 목록을 훑을 수 없는 분에게는 이것이 목록을 보는 유일한 방법이다.
+ * 화면에 붙은 번호를 그대로 불러 주어 '세 번째 것'이라고 짚을 수 있게 한다.
+ */
+export function spokenWithChoices(title: string, labels: string[]): string {
+  const items = labels.map((l, i) => `${i + 1}번, ${readable(l)}.`).join(' ');
+  return `${title} ${items}`;
+}
+
+/** 화면에 쓰는 기호를 소리로 읽을 수 있는 말로 바꾼다. */
+function readable(label: string): string {
+  return label.replace(/~/g, '에서 ').replace(/\s+/g, ' ').trim();
+}
 
 /** 이 질문을 말로 답할 때 쓸 후보 목록 */
 export function voiceChoicesFor(choices: Choice[]): VoiceChoice[] {

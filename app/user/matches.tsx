@@ -85,6 +85,16 @@ export default function MatchesScreen() {
     sentOn !== null && p.checkedAt !== null && p.checkedAt >= sentOn;
   const freshCount = properties.filter(isNew).length;
 
+  /*
+   * 못 가는 집은 목록에서 뺀다.
+   *
+   * 어차피 중개사와 함께 움직이므로 당사자가 봐야 하는 것은 '갈 수 있는 곳'이다.
+   * 못 가는 집을 카드로 늘어놓으면 목록만 길어지고 읽을 것이 늘어난다.
+   * 다만 판정 자체는 그대로 한다 — 몇 곳을 걸렀는지는 한 줄로 알려드린다.
+   */
+  const shown = results.filter((r) => r.result.pending || r.result.verdict !== 'stop');
+  const droppedCount = results.length - shown.length;
+
   return (
     <Screen>
       <AppBar title="확인 결과" />
@@ -115,7 +125,11 @@ export default function MatchesScreen() {
         </View>
       ) : null}
 
-      {results.map(({ property, result }) => (
+      {droppedCount > 0 ? (
+        <Text style={s.dropped}>안 맞는 집 {droppedCount}곳은 빼 드렸어요</Text>
+      ) : null}
+
+      {shown.map(({ property, result }) => (
         <VerdictCard key={property.id} property={property} result={result} fresh={isNew(property)} />
       ))}
     </Screen>
@@ -190,6 +204,13 @@ const s = StyleSheet.create({
     letterSpacing: -0.6,
   },
 
+
+  dropped: {
+    marginTop: space.lg,
+    fontSize: font.label,
+    color: color.textMuted,
+    fontFamily: family.regular,
+  },
 
   fresh: {
     marginTop: space.lg,

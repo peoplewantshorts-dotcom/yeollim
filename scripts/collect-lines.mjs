@@ -29,7 +29,7 @@ const M = require(path.join(out, 'matching'));
 const EXTRA = [
   // 시작 · 안내
   '열림. 생활할 수 있는 집인지, 확인해서 알려드려요.',
-  '맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다. 시간 제한은 없어요.',
+  '맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다.',
   '어떤 집을 찾으세요? 아직 정하지 않으셨으면 비워두고 넘어가셔도 됩니다.',
 
   // 말로 답하기
@@ -66,11 +66,26 @@ const add = (t) => {
   if (s) lines.add(s);
 };
 
-// 프로필 문항 — 제목과 선택지
+// 프로필 문항 — 제목과 선택지. 선택지까지 읽어주는 문장도 함께 만든다.
 for (const q of [Q.MOBILITY_Q, Q.CONTACT_Q]) {
   add(q.title);
   add(q.hint);
   for (const c of q.choices) add(c.label);
+  add(Q.spokenWithChoices(q.title, q.choices.map((c) => c.label)));
+}
+
+// 집 조건 문항 — 화면에 적힌 질문 그대로
+const TERM_QUESTIONS = [
+  ['보증금은 얼마쯤 생각하세요?', Q.DEPOSIT_BANDS],
+  ['월세는요?', Q.RENT_BANDS],
+  ['방은 몇 개면 좋으세요?', Q.ROOM_OPTIONS],
+  ['몇 층이 좋으세요?', Q.FLOOR_OPTIONS],
+  ['걸어서 갈 수 있으면 좋은 곳이 있으세요?', Q.NEAR_OPTIONS],
+];
+for (const [title, options] of TERM_QUESTIONS) {
+  add(title);
+  for (const o of options) add(o.label);
+  add(Q.spokenWithChoices(title, options.map((o) => o.label)));
 }
 
 // 요청서 머리말

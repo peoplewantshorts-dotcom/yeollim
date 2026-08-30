@@ -92,15 +92,12 @@ export default function RequestScreen() {
 
         {/* 전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다. 밑줄로 세워 둔다. */}
         {profile.contact === 'text' ? (
-          <View style={s.mark}>
-            <Text style={[noteText, s.markText]}>전화가 어려워요</Text>
-            <Text style={[noteText, s.markText]}>문자로 연락 주세요</Text>
-          </View>
+          <NoteLine text="전화가 어려워요. 문자로 연락 주세요" highlight />
         ) : null}
 
         <Text style={[noteText, s.section]}>꼭 필요해요</Text>
         {musts.length > 0 ? (
-          musts.map((r) => <NoteLine key={r.key} text={r.cardText} />)
+          musts.map((r) => <NoteLine key={r.key} text={r.cardText} highlight />)
         ) : (
           <Text style={noteText}>집 구조에서 꼭 필요한 조건은 없으세요</Text>
         )}
@@ -109,7 +106,7 @@ export default function RequestScreen() {
           <>
             <Text style={[noteText, s.section]}>이런 집이면 좋겠어요</Text>
             {terms.map((t) => (
-              <NoteLine key={t} text={t} />
+              <NoteLine key={t} text={t} mark="·" />
             ))}
           </>
         ) : null}
@@ -152,14 +149,6 @@ const s = StyleSheet.create({
    *
    * 한 줄로 두면 '전화가 어려워요. 문자로' 에서 끊겨 읽기가 나빠서 두 줄로 나눴다.
    */
-  mark: {
-    alignSelf: 'flex-start',
-    marginVertical: space.xs,
-    paddingHorizontal: space.md,
-    borderRadius: 4,
-    backgroundColor: color.primarySoft,
-  },
-  markText: { fontFamily: family.bold, color: color.onPrimarySoft },
   section: {
     marginTop: RULE - 10,
     fontFamily: family.extrabold,

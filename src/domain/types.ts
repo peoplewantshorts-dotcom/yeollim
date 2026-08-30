@@ -64,8 +64,12 @@ export interface GeneralTerms {
    * 0을 몇 개 적어야 하는지 세는 일도 부담이다. 중개사가 매물을 고를 때
    * 필요한 것은 정확한 금액이 아니라 대략의 범위이므로 구간이면 충분하다.
    */
-  deposit: string | null;
-  rent: string | null;
+  /*
+   * 여러 개 고를 수 있다. 예산은 하나로 딱 떨어지지 않는다 —
+   * 300~500 도 보고 500~1000 도 본다고 말하는 편이 실제에 가깝다.
+   */
+  deposit: string[];
+  rent: string[];
   rooms: 'one' | 'two' | 'three' | null;
   floorPref: 'any' | 'low' | 'high' | null;
   /** 걸어서 갈 수 있으면 좋은 곳 */
@@ -74,8 +78,8 @@ export interface GeneralTerms {
 
 export const emptyTerms = (): GeneralTerms => ({
   area: '',
-  deposit: null,
-  rent: null,
+  deposit: [],
+  rent: [],
   rooms: null,
   floorPref: null,
   near: [],
