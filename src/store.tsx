@@ -93,7 +93,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<AppState>;
           // 읽는 속도 단계를 좁혔다. 예전에 저장된 값이 그대로면 어느 칸도 안 켜진다.
-          const rate = [0.9, 1, 1.1].includes(parsed.voiceRate ?? 1) ? parsed.voiceRate : 1;
+          const saved = parsed.voiceRate ?? 1;
+          const rate = [0.9, 1, 1.1].includes(saved) ? saved : 1;
           setState({ ...initial, ...parsed, voiceRate: rate });
         }
       } catch {
