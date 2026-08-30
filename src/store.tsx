@@ -92,7 +92,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<AppState>;
-          setState({ ...initial, ...parsed });
+          // 읽는 속도 단계를 좁혔다. 예전에 저장된 값이 그대로면 어느 칸도 안 켜진다.
+          const rate = [0.9, 1, 1.1].includes(parsed.voiceRate ?? 1) ? parsed.voiceRate : 1;
+          setState({ ...initial, ...parsed, voiceRate: rate });
         }
       } catch {
         // 저장된 값을 못 읽어도 앱은 그냥 처음 상태로 뜬다.

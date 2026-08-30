@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -242,6 +242,23 @@ function VerdictCard({
   const [swipeHint, setSwipeHint] = useState(rank === 1 && photos.length > 1);
   // 눌러서 크게 보고 있는 사진. null 이면 닫혀 있다.
   const [zoom, setZoom] = useState<number | null>(null);
+  /*
+   * 사진 넘기기.
+   *
+   * 손가락으로 옆으로 미는 동작은 앱 안의 브라우저(카카오톡 등)에서 자주 막힌다.
+   * 세로 스크롤이 먼저 잡아채기 때문이다. 제스처에 기대지 않고 버튼으로도
+   * 넘길 수 있게 둔다 — 손 떨림이 있는 분에게도 미는 것보다 누르는 편이 쉽다.
+   */
+  const [page, setPage] = useState(0);
+  const strip = useRef<ScrollView>(null);
+  const PHOTO_STEP = 240 + 12;
+
+  const goTo = (i: number) => {
+    const next = Math.max(0, Math.min(photos.length - 1, i));
+    setPage(next);
+    setSwipeHint(false);
+    strip.current?.scrollTo({ x: next * PHOTO_STEP, animated: true });
+  };
 
   return (
     <View style={s.card}>
@@ -268,11 +285,15 @@ function VerdictCard({
       {photos.length > 0 ? (
         <View>
           <ScrollView
+            ref={strip}
             horizontal
             showsHorizontalScrollIndicator={false}
             style={s.photoRow}
             contentContainerStyle={s.photoRowInner}
             onScrollBeginDrag={() => setSwipeHint(false)}
+            onMomentumScrollEnd={(e) =>
+              setPage(Math.round(e.nativeEvent.contentOffset.x / PHOTO_STEP))
+            }
             scrollEventThrottle={64}
           >
             {photos.map((m, i) => (
@@ -286,12 +307,27 @@ function VerdictCard({
               </Pressable>
             ))}
           </ScrollView>
+          {photos.length > 1 ? (
+            <View style={s.pager}>
+              <Arrow label="앞 사진" glyph="‹" onPress={() => goTo(page - 1)} off={page === 0} />
+              <Text style={s.pageNo}>
+                {page + 1} / {photos.length}
+              </Text>
+              <Arrow
+                label="다음 사진"
+                glyph="›"
+                onPress={() => goTo(page + 1)}
+                off={page === photos.length - 1}
+              />
+            </View>
+          ) : null}
+
           <ScrollHint
             text="옆으로 넘겨보세요"
             direction="right"
             corner
             visible={swipeHint}
-            bottom={space.md}
+            bottom={56}
           />
         </View>
       ) : null}
@@ -361,6 +397,33 @@ function VerdictCard({
         <SpeakLink text={spoken} label="듣기" />
       </View>
     </View>
+  );
+}
+
+/** 사진을 한 장씩 넘기는 버튼 */
+function Arrow({
+  label,
+  glyph,
+  onPress,
+  off,
+}: {
+  label: string;
+  glyph: string;
+  onPress: () => void;
+  off: boolean;
+}) {
+  const press = useSteadyPress(onPress);
+  return (
+    <Pressable
+      onPress={press}
+      disabled={off}
+      style={({ pressed }) => [s.arrow, off && s.arrowOff, pressed && s.arrowPressed]}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: off }}
+      accessibilityLabel={label}
+    >
+      <Text style={[s.arrowGlyph, off && s.arrowGlyphOff]}>{glyph}</Text>
+    </Pressable>
   );
 }
 
@@ -493,6 +556,29 @@ const s = StyleSheet.create({
   photoRow: { marginTop: space.lg },
   photoRowInner: { gap: space.md, paddingRight: space.xl },
   photo: { width: 240, height: 164, borderRadius: radius.button, backgroundColor: color.bg },
+
+  pager: {
+    marginTop: space.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.lg,
+  },
+  arrow: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surface,
+  },
+  arrowOff: { borderColor: color.border, backgroundColor: color.surfaceSoft },
+  arrowPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
+  arrowGlyph: { fontSize: 28, lineHeight: 32, color: color.primaryText, fontFamily: family.bold },
+  arrowGlyphOff: { color: color.border },
+  pageNo: { fontSize: font.label, color: color.textMuted, fontFamily: family.bold, minWidth: 52, textAlign: 'center' },
 
   zoomBack: {
     flex: 1,

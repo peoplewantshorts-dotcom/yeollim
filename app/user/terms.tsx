@@ -112,7 +112,7 @@ export default function TermsScreen() {
         <Accent>어떤 집</Accent>을 찾으세요?
       </H1>
       <SpeakLink
-        text="어떤 집을 찾으세요? 아직 정하지 않으셨으면 비워두고 넘어가셔도 됩니다."
+        text="어떤 집을 찾으세요?"
         label="아직 안 정하셨으면 비워두셔도 돼요"
       />
 

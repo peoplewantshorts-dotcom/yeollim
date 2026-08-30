@@ -25,7 +25,10 @@ export default function Settings() {
   } = useStore();
   const { speak } = useSpeak();
 
-  const trySound = useSteadyPress(() => speak('갈 수 있어요'));
+  // 한 마디만 들려주면 톤을 가늠하기 어렵다. 앱을 소개하는 문장을 그대로 읽어준다.
+  const trySound = useSteadyPress(() =>
+    speak('열림. 생활할 수 있는 집인지, 확인해서 알려드려요.'),
+  );
 
   return (
     <Screen>
@@ -61,9 +64,13 @@ export default function Settings() {
         <ChipRow label="읽어주는 속도">
           {(
             [
-              [0.8, '천천히'],
+              /*
+               * 0.8 은 늘어져 답답하고 1.2 는 알아듣기 어려웠다.
+               * 읽는 속도는 조금만 움직여도 체감이 크다.
+               */
+              [0.9, '천천히'],
               [1, '보통'],
-              [1.2, '빠르게'],
+              [1.1, '빠르게'],
             ] as [number, string][]
           ).map(([rate, text]) => (
             <Chip

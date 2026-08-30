@@ -108,8 +108,12 @@ export function useSpeak() {
               resolve();
             }
           });
-          // 미리 만든 파일은 이미 조금 느리게 읽혀 있다. 설정은 그 위에 얹는다.
-          if (voiceRate !== 1) player.setPlaybackRate(voiceRate);
+          /*
+           * 빠르게 틀면 소리가 같이 높아져 다른 사람 목소리처럼 들린다.
+           * 속도를 바꿔도 음높이는 그대로 두게 한다. 톤이 흔들리면 듣기 피로해진다.
+           */
+          player.shouldCorrectPitch = true;
+          if (voiceRate !== 1) player.setPlaybackRate(voiceRate, 'high');
           player.play();
         } catch (e) {
           releasePlayer();

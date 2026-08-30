@@ -105,7 +105,7 @@ export default function ProfileScreen() {
         <Accent>두세 가지</Accent>만 여쭤볼게요
       </H1>
       <SpeakLink
-        text="맞는 집을 찾으려고 두세 가지만 여쭤볼게요. 천천히 고르셔도 됩니다."
+        text="맞는 집을 찾으려고 두세 가지만 여쭤볼게요."
         label="질문을 소리로 들으실 수 있어요"
       />
 
