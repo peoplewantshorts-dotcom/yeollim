@@ -22,8 +22,6 @@ export default function Settings() {
     setVoiceSex,
     voiceRate,
     setVoiceRate,
-    reduceMotion,
-    setReduceMotion,
   } = useStore();
   const { speak } = useSpeak();
 
@@ -33,11 +31,12 @@ export default function Settings() {
     <Screen>
       <AppBar title="설정" settings={false} />
 
-      <H1>어떻게 읽어드릴까요?</H1>
-      <Sub>언제든 다시 바꿀 수 있어요</Sub>
-
+      {/*
+        화면 전체를 아우르는 한 문장을 두었더니 무엇을 바꾸는 곳인지가 오히려
+        흐려졌다. 항목마다 이름을 붙여 두는 편이 찾기 쉽다.
+      */}
       <Card>
-        <Text style={s.label}>읽어주는 목소리</Text>
+        <Text style={s.label}>음성 설정</Text>
         <ChipRow label="읽어주는 목소리">
           {(
             [
@@ -58,7 +57,7 @@ export default function Settings() {
       </Card>
 
       <Card>
-        <Text style={s.label}>읽어주는 속도</Text>
+        <Text style={s.label}>속도 설정</Text>
         <ChipRow label="읽어주는 속도">
           {(
             [
@@ -77,30 +76,6 @@ export default function Settings() {
           ))}
         </ChipRow>
         <TrySound onPress={trySound} />
-      </Card>
-
-      <Card>
-        <Text style={s.label}>움직이는 안내</Text>
-        <Text style={s.hint}>
-          손가락 모양이 움직이면서 아래로 내리라고 알려주는 안내예요.{'\n'}
-          거슬리시면 꺼두셔도 돼요.
-        </Text>
-        <ChipRow label="움직이는 안내">
-          {(
-            [
-              [false, '켜기'],
-              [true, '끄기'],
-            ] as [boolean, string][]
-          ).map(([off, text]) => (
-            <Chip
-              key={String(off)}
-              label={text}
-              selected={reduceMotion === off}
-              onPress={() => setReduceMotion(off)}
-              a11yLabel={`움직이는 안내 ${text}`}
-            />
-          ))}
-        </ChipRow>
       </Card>
 
       <Text style={s.meta}>

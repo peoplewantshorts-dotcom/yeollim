@@ -35,7 +35,7 @@ import { color, family, font, keepAll, space } from '../../src/theme';
  * 찍은 답이 그대로 요청서에 실린다. 그래서 물건을 묻는 선택지에는 그림을 함께 둔다.
  */
 const AID_IMAGE: Record<string, number> = {
-  power: require('../../assets/aid-power.png'),
+  power: require('../../assets/aid-power.jpg'),
   manual: require('../../assets/aid-manual.jpg'),
   cane: require('../../assets/aid-cane.jpg'),
   crutch: require('../../assets/aid-crutch.jpg'),
@@ -89,7 +89,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen
-      scrollHint="아래로 내리면서 하나씩 골라주세요"
+      scrollHint="아래로 내리면서 선택해주세요"
       footer={
         <>
           <Progress done={done} total={total} />

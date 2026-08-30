@@ -12,7 +12,7 @@ import { family, font, radius, space } from '../theme';
  * 가만히 둬도 잠시 뒤 사라진다. 소리나 진동 없이 화면으로만 알린다.
  */
 export function ScrollHint({
-  text = '아래로 내리면서 하나씩 골라주세요',
+  text = '아래로 내리면서 선택해주세요',
   visible,
   /** 아래 버튼 영역 위로 얼마나 띄울지 */
   bottom = space.lg,
