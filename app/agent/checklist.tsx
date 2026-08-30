@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   AppBar,
   Card,
@@ -11,7 +13,7 @@ import {
   Sub,
   useSteadyPress,
 } from '../../src/components/ui';
-import type { PropertyFacts } from '../../src/domain/types';
+import type { Media, PropertyFacts } from '../../src/domain/types';
 import { useStore } from '../../src/store';
 import { color, family, font, HIT, radius, space, TAP_BIG, TAP_GAP } from '../../src/theme';
 
@@ -31,11 +33,14 @@ import { color, family, font, HIT, radius, space, TAP_BIG, TAP_GAP } from '../..
 export default function Checklist() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { properties, updateFacts, updateMemo } = useStore();
+  const { properties, updateFacts, updateInfo } = useStore();
   const property = properties.find((p) => p.id === id);
 
   const [draft, setDraft] = useState<PropertyFacts | null>(property?.facts ?? null);
   const [memo, setMemo] = useState(property?.memo ?? '');
+  const [deposit, setDeposit] = useState<number | null>(property?.depositMan ?? null);
+  const [rent, setRent] = useState<number | null>(property?.rentMan ?? null);
+  const [media, setMedia] = useState<Media[]>(property?.media ?? []);
 
   // 다른 화면에서 이 매물의 값이 바뀌면(통화 분석 저장 등) 입력칸도 따라간다.
   const loaded = useRef(false);
@@ -64,7 +69,7 @@ export default function Checklist() {
 
   const save = () => {
     updateFacts(property.id, draft);
-    updateMemo(property.id, memo);
+    updateInfo(property.id, { memo, depositMan: deposit, rentMan: rent, media });
     router.replace('/agent');
   };
 
@@ -87,6 +92,17 @@ export default function Checklist() {
 
       <H1>{property.name}</H1>
       <Sub>{filled}개 채우셨어요. 모르시는 칸은 비워두시면 됩니다.</Sub>
+
+      {/*
+        가격.
+        사용자는 구간 버튼으로 고르지만 중개사에게는 500/33 이 매물을 부르는 이름이다.
+        정확한 숫자를 그대로 받는다.
+      */}
+      <Card>
+        <Text style={s.section}>보증금 · 월세</Text>
+        <Num label="보증금" unit="만원" value={deposit} onChange={setDeposit} />
+        <Num label="월세" unit="만원" value={rent} onChange={setRent} />
+      </Card>
 
       {/* ① ② 계단 두 곳 — 한 장의 그림으로 어디를 보는지 알려준다 */}
       <Card>
@@ -177,6 +193,40 @@ export default function Checklist() {
       </Card>
 
       {/*
+        영상.
+
+        재는 것과 보여주는 것은 서로를 대신하지 못한다. 90cm 라는 숫자로는
+        현관까지 가는 동선이나 반계단의 실제 높이가 전해지지 않는다.
+        다만 판정은 여전히 잰 숫자로만 한다 — 영상은 근거이지 판정 재료가 아니다.
+      */}
+      <Card>
+        <Text style={s.section}>
+          사진 · 영상 <Text style={s.optional}>선택</Text>
+        </Text>
+        <Text style={s.figCap}>
+          급하시면 사진 몇 장, 여유 있으시면 현관 앞부터 집 안까지 영상 한 번이면 됩니다
+        </Text>
+
+        {media.length > 0 ? (
+          <View style={s.mediaRow}>
+            {media.map((m, i) => (
+              <MediaThumb
+                key={m.uri + i}
+                item={m}
+                onRemove={() => setMedia((xs) => xs.filter((_, j) => j !== i))}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        <View style={s.mediaBtns}>
+          <SmallButton label="사진 찍기" onPress={() => shoot('image', setMedia)} />
+          <SmallButton label="영상 찍기" onPress={() => shoot('video', setMedia)} />
+        </View>
+        <GhostButton label="앨범에서 고르기" onPress={() => choose(setMedia)} />
+      </Card>
+
+      {/*
         숫자로 담기지 않는 것들이 있다. 채광, 관리비, 입주 가능일 같은 것.
         실제 중개사는 이런 것을 글로 적어 보낸다. 그대로 적을 자리를 둔다.
       */}
@@ -196,6 +246,78 @@ export default function Checklist() {
         />
       </Card>
     </Screen>
+  );
+}
+
+/**
+ * 영상을 찍거나 고른다.
+ *
+ * 권한을 거절당해도 앱이 멈추지 않는다. 영상은 있으면 좋은 것이지 없으면
+ * 매물을 못 올리는 것이 아니다.
+ */
+type Add = (fn: (xs: Media[]) => Media[]) => void;
+
+const toMedia = (assets: ImagePicker.ImagePickerAsset[]): Media[] =>
+  assets.map((a) => ({ uri: a.uri, kind: a.type === 'video' ? 'video' : 'image' }));
+
+async function shoot(kind: 'image' | 'video', add: Add) {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return;
+  const res = await ImagePicker.launchCameraAsync({
+    mediaTypes: kind === 'video' ? ['videos'] : ['images'],
+    quality: 0.7,
+  });
+  if (!res.canceled) add((xs) => [...xs, ...toMedia(res.assets)]);
+}
+
+async function choose(add: Add) {
+  const res = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images', 'videos'],
+    allowsMultipleSelection: true,
+    selectionLimit: 5,
+    quality: 0.7,
+  });
+  if (!res.canceled) add((xs) => [...xs, ...toMedia(res.assets)]);
+}
+
+function MediaThumb({ item, onRemove }: { item: Media; onRemove: () => void }) {
+  const remove = useSteadyPress(onRemove);
+  return (
+    <View>
+      {item.kind === 'video' ? (
+        <VideoThumb uri={item.uri} />
+      ) : (
+        <Image source={{ uri: item.uri }} style={s.thumb} resizeMode="cover" />
+      )}
+      <Pressable
+        onPress={remove}
+        style={s.thumbX}
+        accessibilityRole="button"
+        accessibilityLabel={item.kind === 'video' ? '이 영상 빼기' : '이 사진 빼기'}
+      >
+        <Text style={s.thumbXText}>✕</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function VideoThumb({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri);
+  return <VideoView player={player} style={s.thumb} nativeControls contentFit="cover" />;
+}
+
+/** 나란히 두는 작은 주 버튼 */
+function SmallButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const press = useSteadyPress(onPress);
+  return (
+    <Pressable
+      onPress={press}
+      style={({ pressed }) => [s.small, pressed && s.smallPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={s.smallText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -344,6 +466,33 @@ const s = StyleSheet.create({
     color: color.text,
   },
   unit: { fontSize: font.label, fontFamily: family.semibold, color: color.textSub, width: 28 },
+
+  mediaRow: { marginTop: space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  thumb: { width: 96, height: 96, borderRadius: radius.button, backgroundColor: color.bg },
+  thumbX: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: color.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbXText: { color: '#FFFFFF', fontSize: font.caption, fontFamily: family.bold },
+
+  mediaBtns: { marginTop: space.lg, flexDirection: 'row', gap: space.md },
+  small: {
+    flex: 1,
+    minHeight: TAP_BIG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.button,
+    backgroundColor: color.primary,
+  },
+  smallPressed: { backgroundColor: color.primaryPressed },
+  smallText: { color: color.onPrimary, fontSize: font.label, fontFamily: family.bold },
 
   memo: {
     marginTop: space.md,

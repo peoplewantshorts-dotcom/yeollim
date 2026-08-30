@@ -50,6 +50,14 @@ export interface Requirement {
  */
 export interface GeneralTerms {
   /**
+   * 중개사가 부를 이름.
+   *
+   * 앱은 이름을 묻지 않는데 화면에는 '이○○ 님'이라고 적혀 있었다. 없는 것을
+   * 있는 것처럼 쓴 것이라 지웠다. 대신 여기서 한 번만 받고, 비워두면
+   * 이름 없이 '찾는 집'으로 쓴다. 성 한 글자만 적어도 된다.
+   */
+  name: string;
+  /**
    * 찾는 동네.
    *
    * 중개사가 매물을 고를 때 가장 먼저 보는 조건인데 처음 설계에서 빠져 있었다.
@@ -57,10 +65,15 @@ export interface GeneralTerms {
    * '원광대 근처'처럼 아는 곳을 기준으로 적는 사람도 있다.
    */
   area: string;
-  /** 보증금 (만원) */
-  depositMan: number | null;
-  /** 월세 (만원) */
-  rentMan: number | null;
+  /**
+   * 보증금과 월세는 숫자가 아니라 구간으로 받는다.
+   *
+   * 숫자 입력은 그 자체가 장벽이다. 손이 떨리면 자릿수가 어긋나고,
+   * 0을 몇 개 적어야 하는지 세는 일도 부담이다. 중개사가 매물을 고를 때
+   * 필요한 것은 정확한 금액이 아니라 대략의 범위이므로 구간이면 충분하다.
+   */
+  deposit: string | null;
+  rent: string | null;
   rooms: 'one' | 'two' | null;
   floorPref: 'any' | 'low' | 'high' | null;
   /** 걸어서 갈 수 있으면 좋은 곳 */
@@ -68,9 +81,10 @@ export interface GeneralTerms {
 }
 
 export const emptyTerms = (): GeneralTerms => ({
+  name: '',
   area: '',
-  depositMan: null,
-  rentMan: null,
+  deposit: null,
+  rent: null,
   rooms: null,
   floorPref: null,
   near: [],
@@ -121,6 +135,12 @@ export const emptyFacts = (): PropertyFacts => ({
   parking: null,
 });
 
+/** 매물에 붙는 사진 한 장 또는 영상 하나 */
+export interface Media {
+  uri: string;
+  kind: 'image' | 'video';
+}
+
 export interface Property {
   id: string;
   name: string;
@@ -135,6 +155,30 @@ export interface Property {
    * 을 여기에 그대로 적게 둔다. 판정에는 쓰지 않는다.
    */
   memo: string;
+  /**
+   * 보증금과 월세 (만원).
+   *
+   * 사용자는 구간 버튼으로 고르고 중개사는 숫자로 정확히 넣는다.
+   * 고르는 쪽과 적는 쪽의 부담이 다르기 때문이다 — 손이 떨리는 사람에게 숫자를
+   * 치게 하면 그 자리에서 막히지만, 중개사에게는 500/33 이 매물을 부르는 이름이다.
+   */
+  depositMan: number | null;
+  rentMan: number | null;
+  /**
+   * 중개사가 붙인 사진과 영상.
+   *
+   * 숫자로는 담기지 않는 것이 있다. 현관까지 가는 동선, 반계단의 실제 높이,
+   * 문턱을 넘는 느낌 같은 것들. 재는 것과 보여주는 것은 서로를 대신하지 못해서
+   * 둘 다 둔다. 판정은 여전히 잰 숫자로만 한다 — 사진과 영상은 근거이지
+   * 판정 재료가 아니다.
+   *
+   * 사진과 영상을 함께 받는 이유는 실무가 그렇기 때문이다. 급하면 사진 몇 장을
+   * 찍어 보내고, 여유가 있으면 동선을 한 번에 담은 영상을 보낸다.
+   *
+   * 지금은 기기 안의 파일 주소를 그대로 들고 있다. 실제 서비스로 가려면
+   * 서버에 올리고 주소를 받아 와야 한다.
+   */
+  media: Media[];
   facts: PropertyFacts;
 }
 

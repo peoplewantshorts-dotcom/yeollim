@@ -148,6 +148,54 @@ export function deriveRequirements(mobility: MobilityId): Requirement[] {
   return [];
 }
 
+/**
+ * 보증금 구간.
+ *
+ * 원룸 시세에 맞춰 아래쪽을 촘촘하게, 위쪽을 넓게 잡았다.
+ * 숫자를 직접 적게 하면 손이 떨리는 분과 숫자에 어려움이 있는 분이 먼저 막힌다.
+ */
+export const DEPOSIT_BANDS: { id: string; label: string }[] = [
+  { id: 'd0', label: '없어요' },
+  { id: 'd100', label: '100~300만원' },
+  { id: 'd300', label: '300~500만원' },
+  { id: 'd500', label: '500~1000만원' },
+  { id: 'd1000', label: '1000~2000만원' },
+  { id: 'd2000', label: '2000만원 넘어도 돼요' },
+];
+
+/** 월세 구간 */
+export const RENT_BANDS: { id: string; label: string }[] = [
+  { id: 'r0', label: '없어요 (전세)' },
+  { id: 'r20', label: '20만원 아래' },
+  { id: 'r2030', label: '20~30만원' },
+  { id: 'r3040', label: '30~40만원' },
+  { id: 'r4050', label: '40~50만원' },
+  { id: 'r50', label: '50만원 넘어도 돼요' },
+];
+
+const BAND_LABEL: Record<string, string> = Object.fromEntries(
+  [...DEPOSIT_BANDS, ...RENT_BANDS].map((b) => [b.id, b.label]),
+);
+
+/**
+ * 동네 이름 추천 목록.
+ *
+ * 주소를 한 글자도 안 틀리게 적는 것은 부담이 크다. 몇 글자만 치면 비슷한 것을
+ * 골라 누를 수 있게 한다.
+ *
+ * 지금은 실증 지역(익산)을 손으로 적어 둔 목록이다. 도로명주소 API(juso.go.kr)로
+ * 바꾸려면 아래 suggestAreas 안쪽만 갈아 끼우면 되고, 화면은 손대지 않아도 된다.
+ * 목록이 비어 있어도 직접 적어 넣을 수 있으므로 이 기능이 없다고 막히지는 않는다.
+ */
+export const AREA_SUGGESTIONS: string[] = [];
+
+/** 몇 글자만 쳐도 비슷한 것을 골라 준다. 없으면 빈 목록이고 직접 적으면 된다. */
+export function suggestAreas(query: string, limit = 3): string[] {
+  const q = query.replace(/\s+/g, '');
+  if (q.length < 1) return [];
+  return AREA_SUGGESTIONS.filter((a) => a.replace(/\s+/g, '').includes(q)).slice(0, limit);
+}
+
 /** 걸어서 갈 수 있으면 좋은 곳 */
 export const NEAR_OPTIONS: { id: string; label: string }[] = [
   { id: 'stop', label: '버스나 지하철 정류장' },
@@ -172,8 +220,8 @@ export function termLines(t: GeneralTerms | undefined | null): string[] {
   const out: string[] = [];
   if (t.area.trim()) out.push(`${t.area.trim()}에서 찾고 있어요`);
   const money = [
-    t.depositMan !== null ? `보증금 ${t.depositMan}만원` : '',
-    t.rentMan !== null ? `월세 ${t.rentMan}만원` : '',
+    t.deposit ? `보증금 ${BAND_LABEL[t.deposit] ?? t.deposit}` : '',
+    t.rent ? `월세 ${BAND_LABEL[t.rent] ?? t.rent}` : '',
   ].filter(Boolean);
   if (money.length) out.push(money.join(' · '));
   if (t.rooms === 'one') out.push('방 한 개면 돼요');
@@ -210,6 +258,34 @@ const VOICE_WORDS: Record<string, string[]> = {
 
   text: ['글로', '문자로', '글이 편해요', '문자가 편해요', '전화 말고'],
   phone: ['전화', '전화도 괜찮아요', '통화', '전화 괜찮아요'],
+
+  // 보증금
+  d0: ['없어요', '보증금 없어요', '무보증'],
+  d100: ['백에서 삼백', '백만원', '이백', '삼백'],
+  d300: ['삼백에서 오백', '삼백만원', '사백', '오백'],
+  d500: ['오백에서 천', '오백만원', '칠백', '천만원'],
+  d1000: ['천에서 이천', '천만원', '천오백', '이천'],
+  d2000: ['이천 넘어도', '이천만원 이상', '더 돼요', '상관없어요'],
+
+  // 월세
+  r0: ['전세', '월세 없어요', '전세로'],
+  r20: ['이십 아래', '이십만원 아래', '싼 거', '이십 이하'],
+  r2030: ['이십에서 삼십', '이십오만원', '삼십만원'],
+  r3040: ['삼십에서 사십', '삼십오만원', '사십만원'],
+  r4050: ['사십에서 오십', '사십오만원', '오십만원'],
+  r50: ['오십 넘어도', '오십만원 이상', '상관없어요'],
+
+  // 방 개수 · 층
+  one: ['한 개', '하나', '원룸', '한 칸'],
+  two: ['두 개', '둘', '투룸', '방 두 개'],
+  low: ['낮은 층', '아래층', '일층', '저층'],
+  high: ['높은 층', '위층', '고층'],
+  any: ['상관없어요', '아무거나', '괜찮아요'],
+
+  // 걸어서 갈 수 있으면 좋은 곳
+  stop: ['정류장', '버스', '지하철', '버스 정류장'],
+  store: ['편의점', '마트', '가게'],
+  hospital: ['병원', '의원', '보건소'],
 };
 
 /** 이 질문을 말로 답할 때 쓸 후보 목록 */

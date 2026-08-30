@@ -40,6 +40,7 @@ export function VoiceAnswer({
   onPick,
   onClose,
   visible,
+  freeText,
 }: {
   /** 무엇을 묻는 중인지. 화면 위에 다시 보여준다. */
   title: string;
@@ -47,6 +48,12 @@ export function VoiceAnswer({
   onPick: (id: string) => void;
   onClose: () => void;
   visible: boolean;
+  /**
+   * 고르는 것이 아니라 받아쓰는 질문일 때 켠다. 동네 이름처럼 선택지를 미리
+   * 만들 수 없는 답이 있다. 이때도 들은 것을 그대로 저장하지 않고 한 번 보여드리고
+   * 확인을 받는다 — 잘못 들은 채로 요청서에 실리는 것을 막는 규칙은 똑같다.
+   */
+  freeText?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>('listening');
   const [heard, setHeard] = useState('');
@@ -83,7 +90,7 @@ export function VoiceAnswer({
         // 후보를 여러 개 받아 전부 맞춰본다. 1순위가 틀려도 3순위가 맞을 때가 있다.
         maxAlternatives: 5,
         // 어떤 말이 나올지 미리 귀띔한다. 발음이 흐려도 훨씬 잘 잡는다.
-        contextualStrings: biasingStrings(choices),
+        contextualStrings: freeText ? [] : biasingStrings(choices),
         continuous: false,
       });
     } catch {
@@ -104,6 +111,15 @@ export function VoiceAnswer({
     if (!e.isFinal) return;
 
     running.current = false;
+
+    // 받아쓰기는 맞춰볼 후보가 없다. 들은 말을 그대로 보여드리고 확인만 받는다.
+    if (freeText) {
+      const said = alts[0]?.trim() ?? '';
+      setRanked(said ? [{ id: said, label: said, score: 1 }] : []);
+      setPhase(said ? 'confirm' : 'unclear');
+      return;
+    }
+
     const m = matchVoice(alts, choices);
     setRanked(m.ranked);
     setPhase(m.action === 'confirm' ? 'confirm' : m.action === 'choose' ? 'choose' : 'unclear');

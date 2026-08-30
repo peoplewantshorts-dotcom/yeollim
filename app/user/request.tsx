@@ -31,7 +31,7 @@ import { color, family, font, space } from '../../src/theme';
  */
 export default function RequestScreen() {
   const router = useRouter();
-  const { profile, userName, sendRequest } = useStore();
+  const { profile, sendRequest } = useStore();
 
   if (!profile) {
     return (
@@ -47,9 +47,12 @@ export default function RequestScreen() {
 
   const musts = profile.requirements.filter((r) => r.priority === 'must' && r.cardText);
   const terms = termLines(profile.terms);
+  // 이름을 안 적으셨으면 없는 이름을 지어내지 않는다.
+  const who = profile.terms?.name?.trim();
+  const title = who ? `${who} 님이 찾는 집` : '찾는 집';
 
   const spoken = [
-    `${userName} 님이 찾는 집.`,
+    `${title}.`,
     `${MOBILITY_SENTENCE[profile.mobility]}.`,
     `${CONTACT_SENTENCE[profile.contact]}.`,
     musts.length ? `꼭 필요한 것. ${musts.map((r) => r.cardText).join(', ')}.` : '',
@@ -80,12 +83,14 @@ export default function RequestScreen() {
       <Sub>필요한 것만 뽑아서 정리했어요</Sub>
 
       <NoteSheet>
-        <Text style={[noteText, s.title]}>{userName} 님이 찾는 집</Text>
+        <Text style={[noteText, s.title]}>{title}</Text>
         <Text style={noteText}>{MOBILITY_SENTENCE[profile.mobility]}</Text>
 
         {/* 전화가 어려운 분에게 전화를 걸면 그 자리에서 중개가 끊긴다. 밑줄로 세워 둔다. */}
         {profile.contact === 'text' ? (
-          <Text style={[noteText, s.underline]}>전화가 어려워요. 문자로 연락 주세요</Text>
+          <View style={s.mark}>
+            <Text style={[noteText, s.markText]}>전화가 어려워요. 문자로 연락 주세요</Text>
+          </View>
         ) : null}
 
         <Text style={[noteText, s.section]}>꼭 필요해요</Text>
@@ -124,7 +129,25 @@ const s = StyleSheet.create({
     color: color.textMuted,
     fontFamily: family.regular,
   },
-  title: { fontSize: font.h2 + 2, fontFamily: family.extrabold, letterSpacing: -0.5 },
-  underline: { textDecorationLine: 'underline', fontFamily: family.bold },
-  section: { marginTop: RULE - 10, fontFamily: family.extrabold, color: color.primaryText },
+  title: { fontSize: font.display, fontFamily: family.extrabold, letterSpacing: -0.6 },
+
+  /*
+   * 종이 위에서 세 가지를 서로 다른 방법으로 구분한다.
+   * 제목은 크기로, 구획은 밑줄로, 꼭 봐야 할 한 줄은 형광펜으로.
+   * 전부 색으로만 나누면 색이 비슷해 눈이 어디를 봐야 할지 못 찾는다.
+   */
+  mark: {
+    alignSelf: 'flex-start',
+    marginVertical: space.xs,
+    paddingHorizontal: space.sm,
+    borderRadius: 3,
+    backgroundColor: color.fixBg,
+  },
+  markText: { fontFamily: family.bold },
+  section: {
+    marginTop: RULE - 10,
+    fontFamily: family.extrabold,
+    color: color.paperInk,
+    textDecorationLine: 'underline',
+  },
 });

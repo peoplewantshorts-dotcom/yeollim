@@ -31,13 +31,13 @@ export default function RolePick() {
 
       <RoleCard
         title="집을 구하고 있어요"
-        desc="헛걸음하지 않게 미리 알려드려요"
+        desc="안전하게 생활할 수 있는 집을 구하고 싶어요"
         art={require('../assets/role-user.jpg')}
         onPress={() => pick('user')}
       />
       <RoleCard
         title="공인중개사예요"
-        desc="몇 가지만 재주시면 돼요"
+        desc="안전한 주거 공간을 찾아드릴게요"
         art={require('../assets/role-agent.jpg')}
         onPress={() => pick('agent')}
       />

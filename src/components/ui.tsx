@@ -467,14 +467,32 @@ const s = StyleSheet.create({
   primaryBtnOff: { backgroundColor: color.borderStrong, shadowOpacity: 0, elevation: 0 },
   primaryBtnText: { color: color.onPrimary, fontSize: font.body + 1, fontFamily: family.extrabold },
 
+  /*
+   * 두 번째 버튼.
+   *
+   * 처음에는 테두리 없이 회색 글씨만 두었더니 버튼으로 안 보이고 작아 보였다.
+   * 주 버튼보다 덜 눈에 띄어야 하는 것이지 누르기 어려워야 하는 것이 아니다.
+   * 테두리를 두르고 글자를 키워 '눌러도 되는 것'으로 읽히게 했다.
+   */
   ghostBtn: {
-    minHeight: HIT,
+    minHeight: TAP_BIG,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: space.md,
     paddingVertical: space.md,
+    paddingHorizontal: space.xl,
+    borderRadius: radius.button,
+    borderWidth: 2,
+    borderColor: color.borderStrong,
+    backgroundColor: color.surface,
   },
-  ghostBtnPressed: { opacity: 0.6 },
-  ghostBtnText: { color: color.textMuted, fontSize: font.caption + 1, fontFamily: family.semibold },
+  ghostBtnPressed: { backgroundColor: color.primarySoft, borderColor: color.primary },
+  ghostBtnText: {
+    color: color.primaryText,
+    fontSize: font.body,
+    fontFamily: family.bold,
+    ...keepAll,
+  },
 
   speakLink: {
     minHeight: HIT,
@@ -645,7 +663,9 @@ const NOTE_PAD_TOP = 52;
 
 /** 종이 위 본문. 행간이 줄 간격에 묶여 있다. */
 export const noteText = {
-  fontSize: font.body,
+  // 종이 위의 글씨는 화면 글씨보다 한 단계 크게. 요청서는 중개사도 읽고
+  // 당사자도 다시 꺼내 보는 문서라 멀리서도 읽혀야 한다.
+  fontSize: font.h2,
   lineHeight: RULE,
   color: color.paperInk,
   fontFamily: family.regular,

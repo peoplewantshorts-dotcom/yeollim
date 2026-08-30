@@ -17,6 +17,9 @@ export const SEED_PROPERTIES: Property[] = [
     address: '전북 익산시 ○○동',
     checkedAt: null,
     memo: '',
+    depositMan: null,
+    rentMan: null,
+    media: [],
     facts: emptyFacts(),
   },
   {
@@ -25,6 +28,9 @@ export const SEED_PROPERTIES: Property[] = [
     address: '전북 익산시 ○○동',
     checkedAt: '2026-08-29',
     memo: '남향이라 낮에 밝습니다. 관리비 5만원 별도.',
+    depositMan: 500,
+    rentMan: 40,
+    media: [],
     facts: {
       doorWidthCm: 92,
       outStepCount: 2,
@@ -43,6 +49,9 @@ export const SEED_PROPERTIES: Property[] = [
     address: '전북 익산시 ○○동',
     checkedAt: '2026-08-28',
     memo: '',
+    depositMan: 300,
+    rentMan: 30,
+    media: [],
     facts: {
       doorWidthCm: 78,
       outStepCount: 4,
@@ -61,6 +70,9 @@ export const SEED_PROPERTIES: Property[] = [
     address: '전북 익산시 ○○동',
     checkedAt: '2026-08-30',
     memo: '9월 중순 입주 가능합니다.',
+    depositMan: 1000,
+    rentMan: 45,
+    media: [],
     facts: {
       doorWidthCm: 85,
       outStepCount: 1,

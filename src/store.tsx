@@ -6,7 +6,7 @@ import type { Property, PropertyFacts, RequestCard, UserProfile } from './domain
 
 // 프로필과 매물 데이터 구조가 바뀌었다. 예전에 저장된 값을 그대로 읽으면
 // 없는 항목을 참조하다 판정이 어긋나므로 저장 키를 올려 새로 시작한다.
-const KEY = 'yeollim.state.v3';
+const KEY = 'yeollim.state.v6';
 
 export type Role = 'user' | 'agent';
 
@@ -47,7 +47,8 @@ interface Store extends AppState {
   sendRequest: () => RequestCard | null;
   /** 중개사가 확인 질문에 답하거나 통화 분석 결과를 저장할 때 */
   updateFacts: (propertyId: string, facts: PropertyFacts) => void;
-  updateMemo: (propertyId: string, memo: string) => void;
+  /** 판정에 쓰지 않는 매물 정보(메모·가격)를 갱신한다. */
+  updateInfo: (propertyId: string, patch: Partial<Pick<Property, 'memo' | 'depositMan' | 'rentMan' | 'media'>>) => void;
   /** 중개사가 매물을 직접 올릴 때. 우리에게는 매물 데이터베이스가 없다. */
   addProperty: (name: string, address: string) => string;
   reset: () => void;
@@ -117,10 +118,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               : p,
           ),
         })),
-      updateMemo: (propertyId, memo) =>
+      updateInfo: (propertyId, patch) =>
         setState((s) => ({
           ...s,
-          properties: s.properties.map((p) => (p.id === propertyId ? { ...p, memo } : p)),
+          properties: s.properties.map((p) => (p.id === propertyId ? { ...p, ...patch } : p)),
         })),
       addProperty: (name, address) => {
         const id = `p${Date.now()}`;
@@ -128,7 +129,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ...s,
           properties: [
             ...s.properties,
-            { id, name, address, checkedAt: null, memo: '', facts: emptyFacts() },
+            {
+            id,
+            name,
+            address,
+            checkedAt: null,
+            memo: '',
+            depositMan: null,
+            rentMan: null,
+            media: [],
+            facts: emptyFacts(),
+          },
           ],
         }));
         return id;

@@ -72,7 +72,9 @@ export default function AgentInbox() {
       <Sub>줄자로 재신 값을 넣어주시면 됩니다</Sub>
 
       <View style={s.reqBox}>
-        <Text style={s.reqName}>{latest.userName} 님 요청서</Text>
+        <Text style={s.reqName}>
+          {latest.terms?.name?.trim() ? `${latest.terms.name.trim()} 님 요청서` : '받은 요청서'}
+        </Text>
         <Text style={s.reqBody}>{MOBILITY_SENTENCE[latest.mobility]}</Text>
         {musts.map((r) => (
           <Text key={r.key} style={s.reqItem}>
