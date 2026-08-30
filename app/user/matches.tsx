@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Accent,
@@ -205,10 +205,12 @@ function VerdictCard({
    * 보고 지나친다. 첫 카드에서 한 번만 띄우고, 한 번 넘기면 사라진다.
    */
   const [swipeHint, setSwipeHint] = useState(rank === 1 && photos.length > 1);
+  // 눌러서 크게 보고 있는 사진. null 이면 닫혀 있다.
+  const [zoom, setZoom] = useState<number | null>(null);
 
   return (
     <View style={s.card}>
-      <View accessible accessibilityLabel={spoken}>
+      <View accessible accessibilityLabel={spoken.join('. ')}>
         {rank ? (
           <View style={s.rank}>
             <Text style={s.rankText}>{rank}순위</Text>
@@ -235,13 +237,14 @@ function VerdictCard({
             scrollEventThrottle={64}
           >
             {photos.map((m, i) => (
-              <Image
+              <Pressable
                 key={i}
-                source={m.asset ?? { uri: m.uri }}
-                style={s.photo}
-                resizeMode="cover"
-                accessibilityLabel={`${property.name} 사진 ${i + 1}`}
-              />
+                onPress={() => setZoom(i)}
+                accessibilityRole="button"
+                accessibilityLabel={`${property.name} 사진 ${i + 1}. 눌러서 크게 보실 수 있어요`}
+              >
+                <Image source={m.asset ?? { uri: m.uri }} style={s.photo} resizeMode="cover" />
+              </Pressable>
             ))}
           </ScrollView>
           <ScrollHint
@@ -282,6 +285,31 @@ function VerdictCard({
           </View>
         ))}
       </View>
+
+      {/*
+        사진을 크게 보기.
+        작은 사진으로는 문턱 높이나 경사로 기울기를 가늠하기 어렵다.
+        눌러서 화면 가득 볼 수 있게 한다.
+      */}
+      <Modal visible={zoom !== null} transparent animationType="fade" onRequestClose={() => setZoom(null)}>
+        <Pressable
+          style={s.zoomBack}
+          onPress={() => setZoom(null)}
+          accessibilityRole="button"
+          accessibilityLabel="닫기"
+        >
+          {zoom !== null ? (
+            <Image
+              source={photos[zoom].asset ?? { uri: photos[zoom].uri }}
+              style={s.zoomImg}
+              resizeMode="contain"
+            />
+          ) : null}
+          <View style={s.zoomClose}>
+            <Text style={s.zoomCloseText}>닫기</Text>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* 숫자로 담기지 않은 것을 중개사가 적어 보냈다면 그대로 전한다. */}
       {property.memo ? <Text style={s.memo}>{property.memo}</Text> : null}
@@ -379,9 +407,28 @@ const s = StyleSheet.create({
     fontFamily: family.extrabold,
   },
 
-  photoRow: { marginTop: space.lg, marginHorizontal: -space.xl },
-  photoRowInner: { paddingHorizontal: space.xl, gap: space.md },
-  photo: { width: 260, height: 176, borderRadius: radius.button, backgroundColor: color.bg },
+  photoRow: { marginTop: space.lg },
+  photoRowInner: { gap: space.md, paddingRight: space.xl },
+  photo: { width: 240, height: 164, borderRadius: radius.button, backgroundColor: color.bg },
+
+  zoomBack: {
+    flex: 1,
+    backgroundColor: 'rgba(12,10,22,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.lg,
+  },
+  zoomImg: { width: '100%', height: '80%' },
+  zoomClose: {
+    marginTop: space.xl,
+    minHeight: 56,
+    justifyContent: 'center',
+    paddingHorizontal: space.xxl,
+    borderRadius: radius.chip,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  zoomCloseText: { color: '#FFFFFF', fontSize: font.body, fontFamily: family.bold },
 
 
 

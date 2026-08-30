@@ -55,15 +55,17 @@ export default function RequestScreen() {
    */
   const title = '제가 찾는 집';
 
+  /*
+   * 문장을 통째로 이어 붙이면 미리 만들어 둔 음성을 못 찾아 전부 기계 소리로 읽힌다.
+   * 문장 단위로 나눠 넘기면 대부분이 사람 목소리로 나온다.
+   */
   const spoken = [
-    `${title}.`,
-    `${MOBILITY_SENTENCE[profile.mobility]}.`,
-    `${CONTACT_SENTENCE[profile.contact]}.`,
-    musts.length ? `꼭 필요한 것. ${musts.map((r) => r.cardText).join(', ')}.` : '',
-    terms.length ? `이런 집이면 좋겠어요. ${terms.join(', ')}.` : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+    title,
+    MOBILITY_SENTENCE[profile.mobility],
+    CONTACT_SENTENCE[profile.contact],
+    ...(musts.length ? ['꼭 필요해요', ...musts.map((r) => r.cardText)] : []),
+    ...(terms.length ? ['이런 집이면 좋겠어요', ...terms] : []),
+  ].filter(Boolean);
 
   const send = () => {
     sendRequest();

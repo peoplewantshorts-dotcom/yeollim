@@ -95,49 +95,87 @@ export function useSpeak() {
     done();
   }, [done]);
 
-  const speak = useCallback(
-    async (text: string) => {
-      // 이미 말하는 중이면 멈춘다. 같은 버튼이 재생과 정지를 겸한다.
-      if (player || (await Speech.isSpeakingAsync())) {
-        stop();
-        return;
-      }
-
-      const clip = CLIPS[voiceSex][lineId(text)];
-      if (clip !== undefined) {
+  /** 미리 만든 파일 하나를 끝까지 튼다. */
+  const playClip = useCallback(
+    (clip: number) =>
+      new Promise<void>((resolve, reject) => {
         try {
           releasePlayer();
           player = createAudioPlayer(clip);
           player.addListener('playbackStatusUpdate', (st) => {
             if (st.didJustFinish) {
               releasePlayer();
-              done();
+              resolve();
             }
           });
           // 미리 만든 파일은 이미 조금 느리게 읽혀 있다. 설정은 그 위에 얹는다.
           if (voiceRate !== 1) player.setPlaybackRate(voiceRate);
-          setSpeaking(true);
           player.play();
-          return;
-        } catch {
-          // 파일 재생이 안 되면 조용히 기기 음성합성으로 넘어간다
+        } catch (e) {
           releasePlayer();
+          reject(e);
         }
+      }),
+    [voiceRate],
+  );
+
+  /** 기기 음성합성으로 한 문장을 읽는다. */
+  const speakSystem = useCallback(
+    async (text: string) =>
+      new Promise<void>((resolve) => {
+        pickSystemVoice(voiceSex).then((voice) => {
+          Speech.speak(text, {
+            language: 'ko-KR',
+            ...(voice ? { voice } : null),
+            rate: 0.94 * voiceRate,
+            pitch: 1.0,
+            onDone: () => resolve(),
+            onStopped: () => resolve(),
+            onError: () => resolve(),
+          });
+        });
+      }),
+    [voiceSex, voiceRate],
+  );
+
+  /**
+   * 소리로 읽어준다.
+   *
+   * 여러 문장을 넘기면 문장마다 미리 만든 음성을 찾아 차례로 튼다.
+   * 통째로 이어 붙인 긴 문장은 미리 만들어 둘 수 없어서 기기 음성으로 읽히는데,
+   * 그러면 앞뒤가 사람 목소리인데 가운데만 기계 소리가 나서 오히려 더 어색하다.
+   * 문장 단위로 쪼개 두면 대부분이 사람 목소리로 나온다.
+   */
+  const speak = useCallback(
+    async (input: string | string[]) => {
+      // 이미 말하는 중이면 멈춘다. 같은 버튼이 재생과 정지를 겸한다.
+      if (player || (await Speech.isSpeakingAsync())) {
+        stop();
+        return;
       }
 
-      const voice = await pickSystemVoice(voiceSex);
+      const lines = (Array.isArray(input) ? input : [input])
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (!lines.length) return;
+
       setSpeaking(true);
-      Speech.speak(text, {
-        language: 'ko-KR',
-        ...(voice ? { voice } : null),
-        rate: 0.94 * voiceRate,
-        pitch: 1.0,
-        onDone: done,
-        onStopped: done,
-        onError: done,
-      });
+      for (const line of lines) {
+        if (!alive.current) break;
+        const clip = CLIPS[voiceSex][lineId(line)];
+        if (clip !== undefined) {
+          try {
+            await playClip(clip);
+            continue;
+          } catch {
+            // 파일 재생이 안 되면 조용히 기기 음성합성으로 넘어간다
+          }
+        }
+        await speakSystem(line);
+      }
+      done();
     },
-    [done, stop, voiceSex, voiceRate],
+    [done, stop, voiceSex, playClip, speakSystem],
   );
 
   return { speak, speaking, stop };

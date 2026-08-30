@@ -23,7 +23,13 @@ export interface ItemResult {
   verdict: ItemVerdict;
   /** 사용자에게 보여줄 쉬운 말 근거 */
   reason: string;
-  /** fixable 일 때의 해결 방법 */
+  /**
+   * 고칠 수 있을 때 무엇을 하면 되는지.
+   *
+   * 당사자가 직접 할 수 있는 일은 거의 없다. 문턱을 없애는 것도 문을 바꾸는 것도
+   * 임대인의 허락이 필요하다. 그래서 '이렇게 하면 됩니다'가 아니라
+   * '이렇게 요청해 보세요'로 적는다. 실제로 할 수 있는 행동이어야 한다.
+   */
   remedy?: string;
   isMust: boolean;
 }
@@ -103,7 +109,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: `현관문 폭이 ${cm}cm예요`,
-          remedy: '문턱만 없애도 지나가기 수월해져요',
+          remedy: '문을 끝까지 열면 몇 cm 더 나와요',
         };
       }
       return { ...base, verdict: 'fail', reason: `현관문 폭이 ${cm}cm라 좁아요` };
@@ -130,7 +136,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: '중앙현관 앞에 계단 한 칸이 있어요',
-          remedy: '경사판을 놓으면 들어갈 수 있어요',
+          remedy: '경사판을 놓아 달라고 요청해 보세요',
         };
       }
       return { ...base, verdict: 'fail', reason: `중앙현관 앞에 계단이 ${n}칸 있어요` };
@@ -172,7 +178,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: `화장실에 ${cm}cm 문턱이 있어요`,
-          remedy: '작은 경사판으로 넘을 수 있어요',
+          remedy: '작은 경사판을 놓아 달라고 요청해 보세요',
         };
       }
       return { ...base, verdict: 'fail', reason: `화장실 문턱이 ${cm}cm예요` };
@@ -189,7 +195,7 @@ function judgeItem(req: Requirement, f: PropertyFacts): ItemResult {
           ...base,
           verdict: 'fixable',
           reason: `화장실 문 폭이 ${cm}cm예요`,
-          remedy: '문짝을 접이문으로 바꾸면 지나갈 수 있어요',
+          remedy: '문짝을 접이문으로 바꿔 달라고 요청해 보세요',
         };
       }
       return { ...base, verdict: 'fail', reason: `화장실 문 폭이 ${cm}cm라 좁아요` };
@@ -269,12 +275,23 @@ export function match(requirements: Requirement[], property: Property): MatchRes
   };
 }
 
-/** 판정 카드를 소리로 읽어줄 문장으로 만든다. */
-export function speakableResult(propertyName: string, r: MatchResult): string {
-  if (r.pending) {
-    return `${propertyName}. 아직 확인 중이에요. ${r.lines.join('. ')}. ${r.note}.`;
-  }
-  const head = `${propertyName}. 판정은 ${r.title}.`;
-  const body = r.lines.join('. ');
-  return `${head} ${body}.`;
+/**
+ * 판정 카드를 소리로 읽어줄 문장 목록으로 만든다.
+ *
+ * 한 덩어리로 이어 붙이면 미리 만들어 둔 음성을 못 찾아 전부 기계 소리로 읽힌다.
+ * 문장으로 나눠 두면 조건 문장처럼 미리 만들어 둔 것은 사람 목소리로 나온다.
+ */
+export function speakableResult(propertyName: string, r: MatchResult): string[] {
+  const musts = r.items.filter((i) => i.isMust);
+  const ok = musts.filter((i) => i.verdict === 'pass').map((i) => i.label);
+  const todo = musts
+    .filter((i) => i.verdict === 'fixable')
+    .map((i) => [i.reason, i.remedy].filter(Boolean).join('. '));
+
+  return [
+    propertyName,
+    ...(r.pending ? [PENDING_LABEL, ...r.lines] : []),
+    ...(ok.length ? ['맞는 조건', ...ok] : []),
+    ...(todo.length ? ['고치면 되는 것', ...todo] : []),
+  ];
 }

@@ -311,7 +311,8 @@ export function SpeakLink({
   label = '눌러서 들으실 수 있어요',
   tone = 'brand',
 }: {
-  text: string;
+  /** 여러 문장을 넘기면 문장마다 미리 만든 음성을 찾아 차례로 들려준다. */
+  text: string | string[];
   label?: string;
   tone?: 'brand' | 'onPhoto';
 }) {

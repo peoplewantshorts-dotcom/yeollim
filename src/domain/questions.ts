@@ -355,7 +355,12 @@ const VOICE_WORDS: Record<string, string[]> = {
  * 화면에 붙은 번호를 그대로 불러 주어 '세 번째 것'이라고 짚을 수 있게 한다.
  */
 export function spokenWithChoices(title: string, labels: string[]): string {
-  const items = labels.map((l, i) => `${i + 1}번, ${readable(l)}.`).join(' ');
+  /*
+   * 번호 뒤에 쉼표를 찍었더니 그냥 붙여서 읽어 '4번전동휠체어를사용해요'로 들렸다.
+   * 번호와 내용은 다른 것이므로 사이가 한 박자 떠야 어느 것을 고르는지 잡힌다.
+   * 마침표를 찍으면 합성기가 문장이 끝난 것으로 보고 그만큼 쉬어 준다.
+   */
+  const items = labels.map((l, i) => `${i + 1}번. ${readable(l)}.`).join(' ');
   return `${title} ${items}`;
 }
 
