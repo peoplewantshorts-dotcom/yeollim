@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>열림 · 카메라로 길이 측정 (실험)</title>
+<!--
+  카메라로 길이 측정 — 실험판.
+
+  WebXR(증강현실) 의 hit-test 로 바닥·벽 위의 두 점을 찍어 그 사이 거리를 cm 로 보여 준다.
+  줄자 없이 현관문 폭·복도 폭을 확인하려는 보호자를 위한 것이다 (팀장 질문 10.6).
+  갤럭시 S22·S24·S25 의 Chrome 에서 열어야 한다. 아이폰·아이패드와 앱 안 WebView 에서는 안 된다.
+
+  이 페이지는 앱 번들과 따로 있다 (public/ → 배포 주소 /yeollim/measure.html).
+  ?field=현관문 폭  : 무엇을 측정하는지 화면에 적어 준다
+  ?return=<주소>    : '이 값 쓰기'를 누르면 그 주소로 돌아간다 (measured=<cm> 가 붙는다)
+-->
+<style>
+  :root { --ink: #1B1B2F; --sub: #63637C; --brand: #6B5AE0; --soft: #EFEBFF; --ground: #FDFCFF; --stop: #8E2438; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink);
+    font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, sans-serif; word-break: keep-all; }
+  button { font: inherit; }
+  #intro { padding: 24px 20px 32px; max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 24px; line-height: 1.35; margin: 0 0 6px; }
+  .tag { display: inline-block; font-size: 13px; font-weight: 700; color: var(--brand); background: var(--soft);
+    border-radius: 999px; padding: 4px 10px; margin-bottom: 14px; }
+  p { font-size: 17px; line-height: 1.55; margin: 0 0 12px; color: var(--sub); }
+  ol { padding-left: 22px; font-size: 17px; line-height: 1.6; margin: 0 0 20px; }
+  .primary { width: 100%; min-height: 56px; border: 0; border-radius: 16px; background: var(--brand); color: #fff;
+    font-size: 19px; font-weight: 800; }
+  .primary:disabled { background: #B9B3E6; }
+  .ghost { width: 100%; min-height: 52px; margin-top: 10px; border: 1.5px solid #D9D4F5; border-radius: 16px;
+    background: #fff; color: var(--brand); font-size: 17px; font-weight: 700; }
+  .note { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: #fff; border: 1.5px solid #E6E2FB;
+    font-size: 15px; line-height: 1.55; color: var(--sub); }
+  .warn { border-color: #F2C9D1; background: #FAE7EB; color: var(--stop); }
+
+  /* AR 중 카메라 위에 얹는 안내 */
+  #overlay { display: none; position: fixed; inset: 0; pointer-events: none; }
+  #overlay.on { display: block; }
+  #hud { position: absolute; left: 16px; right: 16px; top: max(16px, env(safe-area-inset-top)); pointer-events: none; }
+  .card { background: rgba(255,255,255,0.94); border-radius: 16px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(27,27,47,0.18); }
+  .card .step { font-size: 14px; font-weight: 800; color: var(--brand); margin-bottom: 2px; }
+  .card .msg { font-size: 18px; font-weight: 800; line-height: 1.4; }
+  .card .sub { font-size: 14px; color: var(--sub); margin-top: 4px; line-height: 1.45; }
+  #result { font-size: 44px; font-weight: 900; letter-spacing: -1px; color: var(--ink); margin: 2px 0 0; }
+  #actions { position: absolute; left: 16px; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); pointer-events: auto; }
+  #actions button { pointer-events: auto; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+  <main id="intro">
+    <span class="tag">실험판</span>
+    <h1 id="title">카메라로 길이 측정</h1>
+    <p id="fieldLine">바닥에 닿는 두 점을 찍으면 그 사이 거리를 cm 로 보여 줘요.</p>
+    <ol>
+      <li>폰을 <b>천천히 좌우로 움직여</b> 바닥을 인식시켜요. 고리 모양이 바닥에 붙으면 준비된 거예요.</li>
+      <li>문틀 <b>안쪽 한 끝</b>의 바닥에 고리를 맞추고 화면을 한 번 누르세요.</li>
+      <li>반대쪽 <b>안쪽 끝</b>에 맞추고 다시 누르면 길이가 나와요.</li>
+    </ol>
+    <button id="start" class="primary" disabled>확인하는 중…</button>
+    <button id="back" class="ghost" hidden>앱으로 돌아가기</button>
+    <div id="support" class="note">이 폰에서 카메라 측정을 쓸 수 있는지 확인하고 있어요.</div>
+    <div class="note">줄자로 측정한 값과 1~2cm 차이가 날 수 있어요. 어두운 곳이나 무늬 없는 바닥에서는 인식이 잘 안 돼요. 문턱처럼 5cm 보다 낮은 것은 이 방법으로 측정하지 마세요.</div>
+  </main>
+
+  <div id="overlay">
+    <div id="hud">
+      <div class="card">
+        <div class="step" id="step">1단계</div>
+        <div class="msg" id="msg">폰을 천천히 움직여 바닥을 인식시켜요</div>
+        <div class="sub" id="sub">고리가 바닥에 붙으면 첫 점을 찍을 수 있어요</div>
+        <div id="result" hidden></div>
+      </div>
+    </div>
+    <div id="actions">
+      <button id="use" class="primary" hidden>이 값 쓰기</button>
+      <button id="redo" class="ghost" hidden>다시 측정</button>
+      <button id="quit" class="ghost">그만하기</button>
+    </div>
+  </div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const q = new URLSearchParams(location.search);
+const field = q.get('field') || '';
+const back = q.get('return') || '';
+const $ = (id) => document.getElementById(id);
+
+if (field) {
+  $('title').textContent = `${field} · 카메라로 측정`;
+  const last = field.charCodeAt(field.length - 1) - 0xac00;
+  const eul = last >= 0 && last <= 11171 && last % 28 !== 0 ? '을' : '를';
+  $('fieldLine').textContent = `${field}${eul} 바닥에서 두 점으로 측정해요. 줄자 대신 쓰는 실험 기능이에요.`;
+}
+if (back) {
+  $('back').hidden = false;
+  $('back').onclick = () => (location.href = back);
+}
+
+/* ── 지원 여부 ──────────────────────────────────────────── */
+const support = $('support');
+const startBtn = $('start');
+async function checkSupport() {
+  if (!('xr' in navigator)) {
+    support.className = 'note warn';
+    support.textContent = '이 브라우저에서는 카메라 측정을 쓸 수 없어요. 갤럭시 폰의 Chrome 으로 이 주소를 열어 주세요. 아이폰·아이패드에서는 안 돼요.';
+    startBtn.textContent = '이 브라우저에서는 쓸 수 없어요';
+    return;
+  }
+  let ok = false;
+  try { ok = await navigator.xr.isSessionSupported('immersive-ar'); } catch { ok = false; }
+  if (!ok) {
+    support.className = 'note warn';
+    support.textContent = '이 폰에서는 증강현실을 쓸 수 없다고 나와요. Play 스토어에서 "Google Play 서비스(AR)" 가 설치돼 있는지 확인하고 Chrome 에서 다시 열어 주세요.';
+    startBtn.textContent = '쓸 수 없어요';
+    return;
+  }
+  support.textContent = '이 폰에서 카메라 측정을 쓸 수 있어요. 시작을 누르면 카메라 사용을 허용해 달라고 물어요.';
+  startBtn.textContent = '측정 시작';
+  startBtn.disabled = false;
+}
+checkSupport();
+
+/* ── 장면 ───────────────────────────────────────────────── */
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+renderer.domElement.style.position = 'fixed';
+renderer.domElement.style.inset = '0';
+renderer.domElement.hidden = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.2));
+
+// 바닥에 붙는 고리. 보이면 점을 찍을 수 있다.
+const reticle = new THREE.Mesh(
+  new THREE.RingGeometry(0.04, 0.055, 40).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0x6b5ae0 }),
+);
+reticle.matrixAutoUpdate = false;
+reticle.visible = false;
+scene.add(reticle);
+
+const dotGeo = new THREE.SphereGeometry(0.012, 16, 16);
+const dotMat = new THREE.MeshBasicMaterial({ color: 0xff6a3d });
+const points = [];
+let line = null;
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ── 안내 ───────────────────────────────────────────────── */
+const overlay = $('overlay');
+const stepEl = $('step'), msgEl = $('msg'), subEl = $('sub'), resultEl = $('result');
+const useBtn = $('use'), redoBtn = $('redo'), quitBtn = $('quit');
+let cm = null;
+
+function say(step, msg, sub) {
+  stepEl.textContent = step;
+  msgEl.textContent = msg;
+  subEl.textContent = sub || '';
+}
+function resetPoints() {
+  for (const p of points) scene.remove(p);
+  points.length = 0;
+  if (line) { scene.remove(line); line = null; }
+  cm = null;
+  resultEl.hidden = true;
+  useBtn.hidden = true;
+  redoBtn.hidden = true;
+  say('1단계', '폰을 천천히 움직여 바닥을 인식시켜요', '고리가 바닥에 붙으면 첫 점을 찍을 수 있어요');
+}
+
+/* ── AR 세션 ────────────────────────────────────────────── */
+let session = null, hitSource = null, viewerSpace = null;
+
+async function start() {
+  try {
+    session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: overlay },
+    });
+  } catch (e) {
+    support.className = 'note warn';
+    support.textContent = '카메라를 열지 못했어요. 카메라 사용을 허용했는지 확인하고 다시 눌러 주세요. (' + (e && e.message ? e.message : e) + ')';
+    return;
+  }
+  renderer.domElement.hidden = false;
+  overlay.classList.add('on');
+  resetPoints();
+  renderer.xr.setReferenceSpaceType('local');
+  await renderer.xr.setSession(session);
+  viewerSpace = await session.requestReferenceSpace('viewer');
+  hitSource = await session.requestHitTestSource({ space: viewerSpace });
+  session.addEventListener('end', () => {
+    hitSource = null; session = null;
+    overlay.classList.remove('on');
+    renderer.domElement.hidden = true;
+    renderer.setAnimationLoop(null);
+  });
+  session.addEventListener('select', onSelect);
+  renderer.setAnimationLoop(render);
+}
+
+function onSelect() {
+  if (!reticle.visible || points.length >= 2) return;
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  dot.position.setFromMatrixPosition(reticle.matrix);
+  scene.add(dot);
+  points.push(dot);
+  if (points.length === 1) {
+    say('2단계', '반대쪽 끝에 고리를 맞추고 다시 누르세요', '같은 바닥 높이에서 찍어야 정확해요');
+    return;
+  }
+  const a = points[0].position, b = points[1].position;
+  const m = a.distanceTo(b);
+  cm = Math.round(m * 1000) / 10;
+  line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([a, b]),
+    new THREE.LineBasicMaterial({ color: 0xff6a3d, linewidth: 2 }),
+  );
+  scene.add(line);
+  say('결과', field ? `${field}` : '두 점 사이 거리', '줄자와 1~2cm 차이가 날 수 있어요');
+  resultEl.textContent = `${cm} cm`;
+  resultEl.hidden = false;
+  useBtn.hidden = false;
+  redoBtn.hidden = false;
+}
+
+function render(_, frame) {
+  if (frame && hitSource) {
+    const ref = renderer.xr.getReferenceSpace();
+    const hits = frame.getHitTestResults(hitSource);
+    if (hits.length) {
+      const pose = hits[0].getPose(ref);
+      reticle.visible = true;
+      reticle.matrix.fromArray(pose.transform.matrix);
+      if (points.length === 0 && stepEl.textContent === '1단계') {
+        say('1단계', '한쪽 끝에 고리를 맞추고 화면을 누르세요', '문틀 안쪽이 바닥에 닿는 자리예요');
+      }
+    } else {
+      reticle.visible = false;
+    }
+  }
+  renderer.render(scene, camera);
+}
+
+// 안내 위의 단추를 누를 때 AR 의 '화면 누름'으로도 들어가지 않게 한다
+for (const el of [useBtn, redoBtn, quitBtn]) {
+  el.addEventListener('beforexrselect', (e) => e.preventDefault());
+}
+$('actions').addEventListener('beforexrselect', (e) => e.preventDefault());
+
+startBtn.addEventListener('click', start);
+redoBtn.addEventListener('click', resetPoints);
+quitBtn.addEventListener('click', () => session && session.end());
+useBtn.addEventListener('click', async () => {
+  if (cm === null) return;
+  if (back) {
+    const sep = back.includes('?') ? '&' : '?';
+    if (session) await session.end();
+    location.href = `${back}${sep}measured=${encodeURIComponent(cm)}`;
+    return;
+  }
+  try { await navigator.clipboard.writeText(String(cm)); } catch {}
+  say('복사했어요', `${cm} cm`, '체크리스트의 직접 입력 칸에 붙여 넣으세요');
+});
+</script>
+</body>
+</html>
